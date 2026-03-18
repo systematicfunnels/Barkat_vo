@@ -18,6 +18,7 @@ import {
   List,
   Alert
 } from 'antd'
+import path from 'path'
 import {
   PlusOutlined,
   EditOutlined,
@@ -166,7 +167,7 @@ const Projects: React.FC = () => {
     if (targetEditProjectId) {
       const projectToEdit = projects.find((x) => x.id === targetEditProjectId)
       if (projectToEdit) {
-        void handleEdit(projectToEdit)
+        handleEdit(projectToEdit)
         window.history.replaceState({}, document.title)
       }
       return
@@ -254,7 +255,20 @@ const Projects: React.FC = () => {
       })
 
       if (selectedPath) {
-        form.setFieldsValue({ [field]: selectedPath })
+        // Copy file to app's user data directory
+        const fileName = path.basename(selectedPath)
+        const targetDir = 'assets' // Relative to user data directory
+        const targetPath = `${targetDir}/${fileName}`
+        
+        // Use the backend to copy the file to app directory
+        const copyResult = await window.api.files.copyAssetFile(selectedPath, targetPath)
+        
+        if (copyResult.success) {
+          form.setFieldsValue({ [field]: targetPath })
+          message.success(`${field === 'qr_code_path' ? 'QR Code' : 'Letterhead'} copied successfully`)
+        } else {
+          message.error(`Failed to copy ${field === 'qr_code_path' ? 'QR Code' : 'Letterhead'}: ${copyResult.error}`)
+        }
       }
     } catch (error) {
       console.error('Failed to pick file:', error)
@@ -275,7 +289,20 @@ const Projects: React.FC = () => {
       })
 
       if (selectedPath) {
-        handleSectorConfigChange(index, 'qr_code_path', selectedPath)
+        // Copy file to app's user data directory
+        const fileName = path.basename(selectedPath)
+        const targetDir = 'assets' // Relative to user data directory
+        const targetPath = `${targetDir}/${fileName}`
+        
+        // Use the backend to copy the file to app directory
+        const copyResult = await window.api.files.copyAssetFile(selectedPath, targetPath)
+        
+        if (copyResult.success) {
+          handleSectorConfigChange(index, 'qr_code_path', targetPath)
+          message.success('Sector QR Code copied successfully')
+        } else {
+          message.error(`Failed to copy QR Code: ${copyResult.error}`)
+        }
       }
     } catch (error) {
       console.error('Failed to pick sector QR file:', error)
@@ -656,7 +683,7 @@ const Projects: React.FC = () => {
             </Button>
           </Tooltip>
           <Tooltip title="Edit Project">
-            <Button icon={<EditOutlined />} onClick={() => void handleEdit(record)} size="small" />
+            <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" />
           </Tooltip>
           <Tooltip title="Delete Project">
             <Button
@@ -693,7 +720,7 @@ const Projects: React.FC = () => {
             )}
             <Upload
               beforeUpload={(file) => {
-                void handleStandardWorkbookImport(file)
+                handleStandardWorkbookImport(file)
                 return false
               }}
               showUploadList={false}
@@ -972,7 +999,7 @@ const Projects: React.FC = () => {
                           type="text"
                           icon={<FolderOpenOutlined />}
                           onClick={() =>
-                            void pickProjectFile('qr_code_path', 'Select Default QR / Barcode')
+                            pickProjectFile('qr_code_path', 'Select Default QR / Barcode')
                           }
                         >
                           Browse
@@ -991,7 +1018,7 @@ const Projects: React.FC = () => {
                           type="text"
                           icon={<FolderOpenOutlined />}
                           onClick={() =>
-                            void pickProjectFile('letterhead_path', 'Select Letterhead Image')
+                            pickProjectFile('letterhead_path', 'Select Letterhead Image')
                           }
                         >
                           Browse
@@ -1062,7 +1089,7 @@ const Projects: React.FC = () => {
                           />
                           <Button
                             icon={<FolderOpenOutlined />}
-                            onClick={() => void pickSectorQrFile(index)}
+                            onClick={() => pickSectorQrFile(index)}
                           >
                             Browse
                           </Button>
@@ -1092,7 +1119,7 @@ const Projects: React.FC = () => {
         }
         open={isWorkbookPreviewOpen}
         onCancel={() => closeWorkbookPreview()}
-        onOk={() => void executeStandardWorkbookImport()}
+        onOk={() => executeStandardWorkbookImport()}
         okText="Import Workbook"
         okButtonProps={{
           disabled:

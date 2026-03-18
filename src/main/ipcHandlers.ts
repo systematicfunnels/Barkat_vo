@@ -1,4 +1,4 @@
-import { dialog, ipcMain, shell } from 'electron'
+import { dialog, ipcMain, shell, app } from 'electron'
 import { dbService } from './db/database'
 import {
   projectService,
@@ -884,5 +884,75 @@ export function registerIpcHandlers(): void {
       throw new Error('Invalid project selected')
     }
     return addonTemplateService.migrateFromChargesConfig(projectId)
+  })
+
+  ipcMain.handle('copy-asset-file', (_, sourcePath: string, targetPath: string) => {
+    try {
+      const fs = require('fs')
+      const path = require('path')
+      
+      if (!sourcePath || !targetPath) {
+        throw new Error('Source and target paths are required')
+      }
+      
+      // Resolve paths relative to user data directory
+      const userDataPath = app.getPath('userData')
+      const resolvedSourcePath = path.resolve(sourcePath)
+      const resolvedTargetPath = path.join(userDataPath, targetPath)
+      
+      // Check if source file exists
+      if (!fs.existsSync(resolvedSourcePath)) {
+        throw new Error(`Source file not found: ${resolvedSourcePath}`)
+      }
+      
+      // Create target directory if it doesn't exist
+      const targetDir = path.dirname(resolvedTargetPath)
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true })
+      }
+      
+      // Copy the file
+      fs.copyFileSync(resolvedSourcePath, resolvedTargetPath)
+      
+      return { success: true, targetPath: targetPath }
+    } catch (error) {
+      console.error('Failed to copy asset file:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+
+  ipcMain.handle('validate-asset-file', (_, assetPath: string) => {
+    try {
+      const fs = require('fs')
+      const path = require('path')
+      
+      if (!assetPath) {
+        throw new Error('Asset path is required')
+      }
+      
+      // Resolve path relative to user data directory
+      const userDataPath = app.getPath('userData')
+      const resolvedPath = path.join(userDataPath, assetPath)
+      
+      // Check if file exists
+      const exists = fs.existsSync(resolvedPath)
+      
+      // Check if it's a valid image file
+      const isValidImage = exists ? ['.png', '.jpg', '.jpeg'].includes(path.extname(resolvedPath).toLowerCase()) : false
+      
+      return { 
+        exists, 
+        isValidImage, 
+        path: resolvedPath 
+      }
+    } catch (error) {
+      console.error('Failed to validate asset file:', error)
+      return { 
+        exists: false, 
+        isValidImage: false, 
+        path: assetPath,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
   })
 }

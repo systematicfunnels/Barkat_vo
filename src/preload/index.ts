@@ -196,6 +196,12 @@ const api = {
     createPayments: (payments: Payment[]) => ipcRenderer.invoke('batch-create-payments', payments),
     deletePayments: (paymentIds: number[]) =>
       ipcRenderer.invoke('batch-delete-payments', paymentIds)
+  },
+  files: {
+    copyAssetFile: (sourcePath: string, targetPath: string) =>
+      ipcRenderer.invoke('copy-asset-file', sourcePath, targetPath),
+    validateAssetFile: (assetPath: string) =>
+      ipcRenderer.invoke('validate-asset-file', assetPath)
   }
 }
 

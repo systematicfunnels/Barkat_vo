@@ -56,6 +56,39 @@ class MaintenanceLetterService extends BasePDFGenerator {
     phone: process.env.CONTACT_PHONE || '+91-XXXXXXXXXX'
   }
 
+  /**
+   * Resolve QR code path with multiple fallback locations
+   */
+  private resolveQrCodePath(qrCodePath: string): string | null {
+    if (!qrCodePath) return null
+    
+    // Try multiple possible locations
+    const possiblePaths = [
+      // Original path (absolute)
+      qrCodePath,
+      // Resolved path (relative to current working directory)
+      path.resolve(qrCodePath),
+      // Relative to app directory
+      path.join(process.cwd(), qrCodePath),
+      // Relative to user data directory
+      path.join(app.getPath('userData'), qrCodePath),
+      // Relative to user data directory assets folder
+      path.join(app.getPath('userData'), 'assets', qrCodePath),
+      // If path is already relative to user data directory
+      qrCodePath.startsWith('assets/') 
+        ? path.join(app.getPath('userData'), qrCodePath)
+        : null
+    ].filter((path): path is string => Boolean(path))
+    
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        return possiblePath
+      }
+    }
+    
+    return null
+  }
+
   public getAll(): MaintenanceLetter[] {
     return dbService.query<MaintenanceLetter>(`
       SELECT l.*, u.unit_number, u.owner_name, u.unit_type, p.name as project_name,
@@ -569,11 +602,11 @@ class MaintenanceLetterService extends BasePDFGenerator {
         color: this.COLORS.PRIMARY
       })
 
-      // Implement QR code embedding
+      // Implement enhanced QR code embedding with better path resolution
       try {
-        const resolvedQrPath = path.resolve(qrCodePath)
+        const resolvedQrPath = this.resolveQrCodePath(qrCodePath)
         
-        if (fs.existsSync(resolvedQrPath)) {
+        if (resolvedQrPath) {
           const qrExt = path.extname(resolvedQrPath).toLowerCase()
           const isSupportedImage = qrExt === '.png' || qrExt === '.jpg' || qrExt === '.jpeg'
           
@@ -601,10 +634,26 @@ class MaintenanceLetterService extends BasePDFGenerator {
             console.warn(`Unsupported QR code format: ${qrExt}. Supported formats: PNG, JPG, JPEG`)
           }
         } else {
-          console.warn(`QR code file not found: ${resolvedQrPath}`)
+          // Show placeholder when QR code is missing
+          this.page.drawText('QR Code: File not found - Please update QR code path in project settings', {
+            x: this.MARGIN,
+            y: this.layout.currentY,
+            size: 8,
+            font: this.fonts.regular,
+            color: this.COLORS.SECONDARY
+          })
+          console.warn(`QR code file not found: ${qrCodePath}`)
         }
       } catch (error) {
         console.error('Failed to embed QR code:', error)
+        // Show error message in PDF
+        this.page.drawText('QR Code: Error loading - Please check file path', {
+          x: this.MARGIN,
+          y: this.layout.currentY,
+          size: 8,
+          font: this.fonts.regular,
+          color: this.COLORS.ERROR
+        })
       }
     }
 

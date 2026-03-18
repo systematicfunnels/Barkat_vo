@@ -341,40 +341,51 @@ const Payments: React.FC = () => {
       }
 
       setLoading(true)
-      const paymentIds: number[] = []
-      for (const payment of validPayments) {
-        const paymentId = await window.api.payments.create(payment as Payment)
-        paymentIds.push(paymentId)
+      
+      // Use batch service for efficient bulk payment creation
+      console.log('🔄 Starting bulk payment creation for:', validPayments.length, 'payments')
+      const result = await window.api.batch.createPayments(validPayments)
+      console.log('📊 Bulk payment result:', result)
+      
+      if (result.failed > 0) {
+        message.warning(`${result.successful} payments recorded, ${result.failed} failed`)
+      } else {
+        message.success(`Successfully recorded ${result.successful} payments`)
       }
-      message.success(
-        `Successfully recorded ${validPayments.length} payments. Generating receipts...`
-      )
 
-      // Show next step guidance using utility
-      showCompletionWithNextStep(
-        'payments',
-        'Payments recorded',
-        navigate,
-        `${validPayments.length} payments recorded`
-      )
+      // Generate receipts for successful payments only
+      const successfulIds = result.results
+        .filter(r => r.paymentId)
+        .map(r => r.paymentId!)
 
-      setGeneratingReceipts(true)
-      try {
-        console.log('🧾 Starting receipt generation for payments:', paymentIds)
-        await Promise.all(paymentIds.map((id) => window.api.payments.generateReceiptPdf(id)))
-        console.log('✅ All receipts generated successfully')
-        message.success('Receipts generated successfully')
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.error(
-          `[PAYMENTS] Failed to generate receipts for ${paymentIds.length} payments:`,
-          errorMessage
+      if (successfulIds.length > 0) {
+        // Show next step guidance using utility
+        showCompletionWithNextStep(
+          'payments',
+          'Payments recorded',
+          navigate,
+          `${result.successful} payments recorded`
         )
-        // Don't fail the entire payment process, just warn about receipts
-        message.warning(`Payments recorded successfully, but receipt generation failed: ${errorMessage}`)
-      } finally {
-        setGeneratingReceipts(false)
+
+        setGeneratingReceipts(true)
+        try {
+          console.log('🧾 Starting receipt generation for payments:', successfulIds)
+          await Promise.all(successfulIds.map((id) => window.api.payments.generateReceiptPdf(id)))
+          console.log('✅ All receipts generated successfully')
+          message.success('Receipts generated successfully')
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          console.error(
+            `[PAYMENTS] Failed to generate receipts for ${successfulIds.length} payments:`,
+            errorMessage
+          )
+          // Don't fail the entire payment process, just warn about receipts
+          message.warning(`Payments recorded successfully, but receipt generation failed: ${errorMessage}`)
+        } finally {
+          setGeneratingReceipts(false)
+        }
       }
+
       setIsBulkModalOpen(false)
       fetchData()
     } catch (error) {
@@ -471,8 +482,16 @@ const Payments: React.FC = () => {
       onOk: async (): Promise<void> => {
         setLoading(true)
         try {
-          await window.api.payments.bulkDelete(selectedRowKeys as number[])
-          message.success(`Successfully deleted ${selectedRowKeys.length} payments`)
+          console.log('🗑️ Starting bulk deletion for:', selectedRowKeys.length, 'payments')
+          const result = await window.api.batch.deletePayments(selectedRowKeys as number[])
+          console.log('📊 Bulk delete result:', result)
+          
+          if (result.failed > 0) {
+            message.warning(`${result.successful} payments deleted, ${result.failed} failed`)
+          } else {
+            message.success(`Successfully deleted ${result.successful} payments`)
+          }
+          
           fetchData()
           setSelectedRowKeys([])
         } catch (error) {
@@ -665,8 +684,8 @@ const Payments: React.FC = () => {
             size="small"
             icon={<InfoCircleOutlined />}
             onClick={() => record.id && handleEditReceipt(record.id)}
-            title="Edit Receipt"
-            aria-label={`Edit receipt for unit ${record.unit_number}`}
+            title="Edit Payment"
+            aria-label={`Edit payment for unit ${record.unit_number}`}
           >
             Edit
           </Button>
@@ -677,7 +696,9 @@ const Payments: React.FC = () => {
             onClick={() => record.id && handleDelete(record.id)}
             title="Delete Payment"
             aria-label={`Delete payment for unit ${record.unit_number}`}
-          />
+          >
+            Delete
+          </Button>
         </Space>
       )
     }

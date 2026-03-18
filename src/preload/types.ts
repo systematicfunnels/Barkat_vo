@@ -403,6 +403,39 @@ declare global {
         update: (key: string, value: string) => Promise<unknown>
         delete: (key: string) => Promise<unknown>
       }
+      batch: {
+        createPayments: (payments: Payment[]) => Promise<{
+          successful: number
+          failed: number
+          results: Array<{
+            index: number
+            paymentId?: number
+            error?: string
+          }>
+        }>
+        deletePayments: (paymentIds: number[]) => Promise<{
+          successful: number
+          failed: number
+          results: Array<{
+            index: number
+            paymentId?: number
+            error?: string
+          }>
+        }>
+      }
+      files: {
+        copyAssetFile: (sourcePath: string, targetPath: string) => Promise<{
+          success: boolean
+          targetPath?: string
+          error?: string
+        }>
+        validateAssetFile: (assetPath: string) => Promise<{
+          exists: boolean
+          isValidImage: boolean
+          path: string
+          error?: string
+        }>
+      }
       detailedLetters: DetailedLettersAPI
     }
   }
