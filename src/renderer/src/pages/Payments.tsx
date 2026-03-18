@@ -70,6 +70,43 @@ const Payments: React.FC = () => {
   const defaultFY = `${currentYear}-${(currentYear + 1).toString().slice(2)}`
   const [selectedFY, setSelectedFY] = useState<string | null>(defaultFY)
 
+  // Auto-format financial year input
+  const formatFinancialYear = (input: string): string => {
+    if (!input) return input
+    
+    // Remove extra spaces and non-digit characters except hyphen
+    const clean = input.trim().replace(/[^\d-]/g, '')
+    
+    // Handle different input formats
+    if (clean.includes('-')) {
+      const parts = clean.split('-')
+      if (parts.length === 2) {
+        const year = parts[0].slice(0, 4)
+        const yearPart = parts[1].slice(0, 2)
+        
+        // If second part has 4 digits, take last 2
+        const finalYearPart = yearPart.length === 4 ? yearPart.slice(-2) : yearPart
+        
+        return `${year}-${finalYearPart}`
+      }
+    } else {
+      // Handle pure number input
+      if (clean.length === 6) { // 202526
+        return `${clean.slice(0,4)}-${clean.slice(4,6)}`
+      }
+      if (clean.length === 8) { // 20252026
+        return `${clean.slice(0,4)}-${clean.slice(6,8)}`
+      }
+      if (clean.length >= 4) { // 2025 or more
+        const year = clean.slice(0,4)
+        const nextYear = (parseInt(year) + 1).toString().slice(-2)
+        return `${year}-${nextYear}`
+      }
+    }
+    
+    return input // Return as-is if can't format
+  }
+
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [searchText, setSearchText] = useState('')
   const [form] = Form.useForm()
@@ -179,7 +216,7 @@ const Payments: React.FC = () => {
   const handleAdd = (): void => {
     setEditingPayment(null)
     form.resetFields()
-    form.setFieldsValue({ payment_date: dayjs(), payment_mode: 'Transfer' })
+    form.setFieldsValue({ payment_date: dayjs(), payment_mode: 'Transfer', financial_year: defaultFY })
     setIsModalOpen(true)
   }
 
@@ -188,6 +225,7 @@ const Payments: React.FC = () => {
     if (payment) {
       setEditingPayment(payment)
       form.setFieldsValue({
+        project_id: payment.project_id,
         unit_id: payment.unit_id,
         letter_id: payment.letter_id,
         payment_amount: payment.payment_amount,
@@ -322,7 +360,9 @@ const Payments: React.FC = () => {
 
       setGeneratingReceipts(true)
       try {
+        console.log('🧾 Starting receipt generation for payments:', paymentIds)
         await Promise.all(paymentIds.map((id) => window.api.payments.generateReceiptPdf(id)))
+        console.log('✅ All receipts generated successfully')
         message.success('Receipts generated successfully')
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -330,7 +370,8 @@ const Payments: React.FC = () => {
           `[PAYMENTS] Failed to generate receipts for ${paymentIds.length} payments:`,
           errorMessage
         )
-        message.error(`Payments recorded but failed to generate some receipts: ${errorMessage}`)
+        // Don't fail the entire payment process, just warn about receipts
+        message.warning(`Payments recorded successfully, but receipt generation failed: ${errorMessage}`)
       } finally {
         setGeneratingReceipts(false)
       }
@@ -348,10 +389,29 @@ const Payments: React.FC = () => {
   const handleModalOk = async (): Promise<void> => {
     try {
       const values = await form.validateFields()
+      const selectedUnit = units.find((u) => u.id === values.unit_id)
+      const projectId = values.project_id ?? selectedUnit?.project_id
+      const normalizedPaymentDate =
+        dayjs.isDayjs(values.payment_date) ? values.payment_date.format('YYYY-MM-DD') : values.payment_date
+      const normalizedPaymentData: Payment = {
+        project_id: projectId,
+        unit_id: values.unit_id,
+        letter_id: values.letter_id,
+        payment_date: normalizedPaymentDate,
+        payment_amount: values.payment_amount,
+        payment_mode: values.payment_mode,
+        cheque_number: values.cheque_number,
+        remarks: values.remarks,
+        financial_year: values.financial_year
+      }
+
+      if (!projectId) {
+        throw new Error('Unable to determine the project for the selected unit')
+      }
       
       if (editingPayment) {
         // Update existing payment
-        await window.api.payments.update(editingPayment.id!, values)
+        await window.api.payments.update(editingPayment.id!, normalizedPaymentData)
         message.success('Payment updated successfully')
         setEditingPayment(null)
         setIsModalOpen(false)
@@ -368,18 +428,7 @@ const Payments: React.FC = () => {
           okText: 'Yes, Continue',
           cancelText: 'No, Edit Amount',
           onOk: async () => {
-            const paymentData: Payment = {
-              project_id: values.project_id,
-              unit_id: values.unit_id,
-              letter_id: values.letter_id,
-              payment_date: values.payment_date.format('YYYY-MM-DD'),
-              payment_amount: values.payment_amount,
-              payment_mode: values.payment_mode,
-              cheque_number: values.cheque_number,
-              remarks: values.remarks,
-              financial_year: values.financial_year
-            }
-            await window.api.payments.create(paymentData)
+            await window.api.payments.create(normalizedPaymentData)
             setIsModalOpen(false)
             fetchData()
           }
@@ -387,19 +436,7 @@ const Payments: React.FC = () => {
         return
       }
 
-      const paymentData: Payment = {
-        project_id: values.project_id,
-        unit_id: values.unit_id,
-        letter_id: values.letter_id,
-        payment_date: values.payment_date.format('YYYY-MM-DD'),
-        payment_amount: values.payment_amount,
-        payment_mode: values.payment_mode,
-        cheque_number: values.cheque_number,
-        remarks: values.remarks,
-        financial_year: values.financial_year
-      }
-
-      await window.api.payments.create(paymentData)
+      await window.api.payments.create(normalizedPaymentData)
       setIsModalOpen(false)
       fetchData()
     } catch (error) {
@@ -943,6 +980,9 @@ const Payments: React.FC = () => {
           layout="vertical"
           initialValues={{ payment_date: dayjs(), payment_mode: 'Transfer' }}
         >
+          <Form.Item name="project_id" hidden>
+            <Input type="hidden" />
+          </Form.Item>
           <Divider orientation={'left' as DividerProps['orientation']} style={{ marginTop: 0 }}>
             Unit Details
           </Divider>
@@ -963,8 +1003,12 @@ const Payments: React.FC = () => {
                   const optionText = String(option.children)
                   return optionText.toLowerCase().includes(input.toLowerCase())
                 }}
-                onChange={() => {
-                  form.setFieldsValue({ letter_id: undefined })
+                onChange={(unitId) => {
+                  const selectedUnit = units.find((u) => u.id === unitId)
+                  form.setFieldsValue({
+                    project_id: selectedUnit?.project_id,
+                    letter_id: undefined
+                  })
                 }}
                 aria-label="Select unit for payment"
               >
@@ -1019,10 +1063,22 @@ const Payments: React.FC = () => {
                             if (val) {
                               const letter = unitLetters.find((l) => l.id === val)
                               if (letter) {
-                                form.setFieldsValue({
-                                  financial_year: letter.financial_year,
-                                  payment_amount: letter.final_amount
-                                })
+                                // Format the financial year from letter
+                                const formattedYear = formatFinancialYear(letter.financial_year)
+                                
+                                // Validate the formatted year
+                                if (!/^\d{4}-\d{2}$/.test(formattedYear)) {
+                                  message.warning('Letter has invalid financial year format, using current year')
+                                  form.setFieldsValue({
+                                    financial_year: defaultFY,
+                                    payment_amount: letter.final_amount
+                                  })
+                                } else {
+                                  form.setFieldsValue({
+                                    financial_year: formattedYear,
+                                    payment_amount: letter.final_amount
+                                  })
+                                }
                               }
                             }
                           }}
@@ -1039,18 +1095,47 @@ const Payments: React.FC = () => {
                       <Form.Item
                         name="financial_year"
                         label="For Financial Year"
-                        rules={[{ required: true, message: 'Please select a financial year' }]}
+                        rules={[
+                          { required: true, message: 'Please select a financial year' },
+                          {
+                            pattern: /^\d{4}-\d{2}$/,
+                            message: 'Format must be YYYY-YY (e.g., 2024-25)'
+                          }
+                        ]}
+                        normalize={(value) => formatFinancialYear(value)}
                         extra={
                           <div style={{ fontSize: '12px' }}>
-                            {selectedLetter
-                              ? 'Auto-filled from selected letter'
-                              : 'Select or enter financial year'}
+                            <Text type="secondary">
+                              Format: YYYY-YY (e.g., 2024-25, 2025-26)
+                            </Text>
+                            <br />
+                            <Text type="secondary">
+                              Auto-formats: 2025-2026 → 2025-26, 20252026 → 2025-26
+                            </Text>
+                            <br />
+                            {selectedLetter && (
+                              <Text type="warning">
+                                Pre-filled from letter - can be edited if needed
+                              </Text>
+                            )}
                           </div>
                         }
                       >
                         <Select
                           placeholder="Select Financial Year"
-                          disabled={!!selectedLetter}
+                          disabled={false} // Allow manual correction even with letter selected
+                          showSearch
+                          filterOption={(input, option) => {
+                            if (!option || !option.children) return false
+                            
+                            // Format the search input
+                            const formattedSearch = formatFinancialYear(input)
+                            const optionText = String(option.children)
+                            
+                            // Check if formatted search matches option
+                            return optionText.includes(formattedSearch) || 
+                                   optionText.toLowerCase().includes(input.toLowerCase())
+                          }}
                           aria-label="Select financial year for payment"
                         >
                           {Array.from(new Set(letters.map((l) => l.financial_year)))
@@ -1116,7 +1201,7 @@ const Payments: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              name="reference_number"
+              name="cheque_number"
               label="Reference # (UTR/Cheque No)"
               aria-label="Enter reference number"
             >

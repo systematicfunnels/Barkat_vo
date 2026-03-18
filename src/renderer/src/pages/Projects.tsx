@@ -51,7 +51,7 @@ const getDefaultSectorConfigs = (): Partial<ProjectSectorPaymentConfig>[] => [
 ]
 
 const DEFAULT_PROJECT_FORM_VALUES: Partial<Project> = {
-  status: 'Active',
+  status: 'Sold',
   city: 'Ahmedabad',
   template_type: 'standard',
   import_profile_key: 'standard_normalized'
@@ -410,7 +410,7 @@ const Projects: React.FC = () => {
     form.setFieldsValue({
       ...DEFAULT_PROJECT_FORM_VALUES,
       ...record,
-      status: record.status || 'Active',
+      status: record.status || 'Sold',
       city: record.city || 'Ahmedabad',
       template_type: record.template_type || 'standard',
       import_profile_key: record.import_profile_key || 'standard_normalized'
@@ -493,7 +493,7 @@ const Projects: React.FC = () => {
         city: String(values.city || '').trim(),
         state: String(values.state || '').trim(),
         pincode: String(values.pincode || '').trim(),
-        status: String(values.status || 'Active').trim(),
+        status: String(values.status || 'Sold').trim(),
         account_name: String(values.account_name || '').trim(),
         bank_name: String(values.bank_name || '').trim(),
         account_no: String(values.account_no || '').trim(),

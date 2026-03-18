@@ -32,26 +32,27 @@ class UnitService {
     const normalized = this.sanitizeText(status).toLowerCase()
     if (
       !normalized ||
-      normalized === 'active' ||
       normalized === 'sold' ||
+      normalized === 'active' ||
       normalized === 'occupied'
     ) {
-      return 'Active'
+      return 'Sold'
     }
-    if (normalized === 'inactive' || normalized === 'unsold') {
-      return 'Inactive'
+    if (normalized === 'unsold' || normalized === 'inactive') {
+      return 'Unsold'
     }
     if (normalized === 'vacant') {
       return 'Vacant'
     }
-    return this.sanitizeText(status) || 'Active'
+    return this.sanitizeText(status) || 'Sold'
   }
 
   private normalizeUnitType(unitType: unknown): string {
     const normalized = this.sanitizeText(unitType).toLowerCase()
     if (!normalized || normalized === 'flat' || normalized === 'bungalow') return 'Bungalow'
     if (normalized === 'plot') return 'Plot'
-    return this.sanitizeText(unitType) || 'Bungalow'
+    // Default to Bungalow for any unrecognized values to prevent database errors
+    return 'Bungalow'
   }
 
   private normalizeIsoDate(value: unknown): string | null {
@@ -268,6 +269,16 @@ class UnitService {
     this.logDebug(
       `[IMPORT] Starting ledger import for project ${projectId} with ${rows.length} rows`
     )
+
+    // Pre-validation: Check for potential issues before processing
+    const invalidRows = rows
+      .map((row, index) => ({ row: index + 1, unitNumber: String(row.unit_number || '').trim(), unitType: String(row.unit_type || '').trim() }))
+      .filter(item => !item.unitNumber)
+
+    if (invalidRows.length > 0) {
+      const rowNumbers = invalidRows.map(item => item.row).join(', ')
+      throw new Error(`Missing unit numbers in rows ${rowNumbers}. Each row must have a unit_number.`)
+    }
 
     return dbService.transaction(() => {
       // 1. Ensure project exists

@@ -1,5 +1,6 @@
 import { dbService } from '../db/database'
 import { projectService } from './ProjectService'
+import { addonTemplateService } from './AddonTemplateService'
 import { BasePDFGenerator } from './BasePDFGenerator'
 import fs from 'fs'
 import path from 'path'
@@ -192,6 +193,29 @@ class MaintenanceLetterService extends BasePDFGenerator {
             }
           }
 
+          // Add addon templates as add-ons for transparency
+          const addonTemplates = addonTemplateService.getEnabledTemplates(projectId)
+          
+          for (const template of addonTemplates) {
+            let amount = template.amount
+            
+            // If it's a rate_per_sqft type, calculate based on unit area
+            if (template.addon_type === 'rate_per_sqft') {
+              const unit = dbService.get<{ area_sqft: number }>('SELECT area_sqft FROM units WHERE id = ?', [unitId])
+              amount = template.amount * (unit?.area_sqft || 0)
+            }
+            
+            if (amount > 0) {
+              dbService.run(
+                `
+                INSERT INTO add_ons (letter_id, addon_name, addon_amount, remarks)
+                VALUES (?, ?, ?, ?)
+              `,
+                [letterId, template.addon_name, amount, 'Pre-configured add-on']
+              )
+            }
+          }
+
           // Also add standard charges as add-ons for transparency if they are non-zero
           const standardCharges = [
             { name: 'N.A. Tax', amount: naTax },
@@ -291,7 +315,7 @@ class MaintenanceLetterService extends BasePDFGenerator {
 
     // Bank details
     this.layout.currentY -= 30
-    this.drawBankDetails(letter)
+    await this.drawBankDetails(letter)
 
     // Footer
     this.drawFooter('Authorized Signature')
@@ -496,7 +520,7 @@ class MaintenanceLetterService extends BasePDFGenerator {
     this.layout.currentY -= paymentInfo.length * 12 + 20
   }
 
-  private drawBankDetails(letter: MaintenanceLetter): void {
+  private async drawBankDetails(letter: MaintenanceLetter): Promise<void> {
     this.page.drawText('Bank Details for Payment:', {
       x: this.MARGIN,
       y: this.layout.currentY,
@@ -544,8 +568,43 @@ class MaintenanceLetterService extends BasePDFGenerator {
         color: this.COLORS.PRIMARY
       })
 
-      // Note: QR code embedding would be implemented here
-      // this.drawQRCode(qrCodePath)
+      // Implement QR code embedding
+      try {
+        const resolvedQrPath = path.resolve(qrCodePath)
+        
+        if (fs.existsSync(resolvedQrPath)) {
+          const qrExt = path.extname(resolvedQrPath).toLowerCase()
+          const isSupportedImage = qrExt === '.png' || qrExt === '.jpg' || qrExt === '.jpeg'
+          
+          if (isSupportedImage) {
+            const qrImageBytes = fs.readFileSync(resolvedQrPath)
+            const qrImage = qrExt === '.png' 
+              ? await this.pdfDoc.embedPng(qrImageBytes)
+              : await this.pdfDoc.embedJpg(qrImageBytes)
+            
+            this.page.drawImage(qrImage, {
+              x: 450,
+              y: this.layout.currentY - 20,
+              width: 80,
+              height: 80
+            })
+            
+            this.page.drawText('Scan to Pay', {
+              x: 460,
+              y: this.layout.currentY - 35,
+              size: 8,
+              font: this.fonts.regular,
+              color: this.COLORS.TEXT
+            })
+          } else {
+            console.warn(`Unsupported QR code format: ${qrExt}. Supported formats: PNG, JPG, JPEG`)
+          }
+        } else {
+          console.warn(`QR code file not found: ${resolvedQrPath}`)
+        }
+      } catch (error) {
+        console.error('Failed to embed QR code:', error)
+      }
     }
 
     this.layout.currentY -= bankInfo.length * 12 + 20

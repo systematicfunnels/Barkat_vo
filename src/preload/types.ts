@@ -87,6 +87,18 @@ export interface MaintenanceRate {
   project_name?: string
 }
 
+export interface ProjectAddonTemplate {
+  id?: number
+  project_id: number
+  addon_name: string
+  addon_type: 'fixed' | 'rate_per_sqft'
+  amount: number
+  is_enabled: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface ProjectSectorPaymentConfig {
   id?: number
   project_id: number

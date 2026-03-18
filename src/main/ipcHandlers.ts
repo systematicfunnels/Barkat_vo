@@ -25,10 +25,17 @@ import { errorLogger, getSafeErrorMessage, ValidationError } from './utils/error
 import { workerPool, WorkerTask } from './utils/workerPool'
 import { backupService } from './services/BackupService'
 import { batchOperationsService } from './services/BatchOperationsService'
+import { addonTemplateService } from './services/AddonTemplateService'
 import { ProjectStatus, UnitStatus } from './types/enums'
 
 const isPositiveInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value > 0
+
+const toPositiveInteger = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null
+  const num = Number(value)
+  return Number.isInteger(num) && num > 0 ? num : null
+}
 
 const isNonNegativeNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -429,9 +436,25 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('create-payment', (_, payment: Payment): number => {
-    if (!isPositiveInteger(payment?.project_id) || !isPositiveInteger(payment?.unit_id)) {
-      throw new Error('Invalid project or unit selected')
+    const projectId = toPositiveInteger(payment?.project_id)
+    const unitId = toPositiveInteger(payment?.unit_id)
+    
+    if (!projectId) {
+      throw new Error('Invalid project selected. Please select a valid project.')
     }
+    if (!unitId) {
+      throw new Error('Invalid unit selected. Please select a valid unit.')
+    }
+
+    // Validate unit belongs to project
+    const unitExists = dbService.get(
+      'SELECT id FROM units WHERE id = ? AND project_id = ?',
+      [unitId, projectId]
+    )
+    if (!unitExists) {
+      throw new Error('Selected unit does not belong to the selected project')
+    }
+
     if (
       payment?.letter_id !== undefined &&
       payment.letter_id !== null &&
@@ -445,18 +468,25 @@ export function registerIpcHandlers(): void {
     if (!isPositiveNumber(payment?.payment_amount)) {
       throw new Error('Payment amount must be greater than 0')
     }
+    if (!/^\d{4}-\d{2}$/.test(payment?.financial_year || '')) {
+      throw new Error('Financial year must be in YYYY-YY format (e.g., 2024-25)')
+    }
     const mode = sanitizeText(payment?.payment_mode)
     if (!['Transfer', 'Cheque', 'Cash', 'UPI'].includes(mode)) {
       throw new Error('Invalid payment mode')
     }
-    if (
-      payment?.financial_year !== undefined &&
-      payment.financial_year !== null &&
-      !isFinancialYear(payment.financial_year)
-    ) {
-      throw new Error('Invalid financial year format (expected YYYY-YY)')
-    }
-    return paymentService.create(payment)
+
+    // Update payment object with converted IDs
+    payment.project_id = projectId
+    payment.unit_id = unitId
+
+    const paymentId = paymentService.create(payment)
+    errorLogger.log(new Error(`Payment created: ${paymentId}`), { 
+      projectId, 
+      unitId, 
+      amount: payment.payment_amount 
+    })
+    return paymentId
   })
 
   ipcMain.handle('update-payment', (_, id: number, payment: Partial<Payment>): boolean => {
@@ -761,5 +791,98 @@ export function registerIpcHandlers(): void {
       errorLogger.log(error as Error, { operation: 'batch-delete-payments' })
       throw new Error(getSafeErrorMessage(error))
     }
+  })
+
+  // Addon Template Management
+  ipcMain.handle('get-addon-templates', (_, projectId: number) => {
+    return addonTemplateService.getProjectTemplates(projectId)
+  })
+
+  ipcMain.handle('get-enabled-addon-templates', (_, projectId: number) => {
+    return addonTemplateService.getEnabledTemplates(projectId)
+  })
+
+  ipcMain.handle('create-addon-template', (_, template) => {
+    if (!isPositiveInteger(template?.project_id)) {
+      throw new Error('Invalid project selected')
+    }
+    if (!template?.addon_name || typeof template.addon_name !== 'string') {
+      throw new Error('Addon name is required')
+    }
+    if (!['fixed', 'rate_per_sqft'].includes(template?.addon_type)) {
+      throw new Error('Addon type must be "fixed" or "rate_per_sqft"')
+    }
+    if (!isPositiveNumber(template?.amount)) {
+      throw new Error('Addon amount must be greater than 0')
+    }
+    if (typeof template?.is_enabled !== 'boolean') {
+      throw new Error('Addon enabled status must be true or false')
+    }
+    if (!isPositiveInteger(template?.sort_order)) {
+      throw new Error('Sort order must be a positive integer')
+    }
+
+    return addonTemplateService.createTemplate(template)
+  })
+
+  ipcMain.handle('update-addon-template', (_, id: number, template) => {
+    if (!isPositiveInteger(id)) {
+      throw new Error('Invalid template ID')
+    }
+    
+    // Validate the template data
+    if (template.addon_name !== undefined && (!template.addon_name || typeof template.addon_name !== 'string')) {
+      throw new Error('Addon name must be a valid string')
+    }
+    if (template.addon_type !== undefined && !['fixed', 'rate_per_sqft'].includes(template.addon_type)) {
+      throw new Error('Addon type must be "fixed" or "rate_per_sqft"')
+    }
+    if (template.amount !== undefined && (!isPositiveNumber(template.amount) && template.amount !== 0)) {
+      throw new Error('Addon amount must be greater than or equal to 0')
+    }
+    if (template.is_enabled !== undefined && typeof template.is_enabled !== 'boolean') {
+      throw new Error('Addon enabled status must be true or false')
+    }
+    if (template.sort_order !== undefined && !isPositiveInteger(template.sort_order)) {
+      throw new Error('Sort order must be a positive integer')
+    }
+
+    return addonTemplateService.updateTemplate(id, template)
+  })
+
+  ipcMain.handle('delete-addon-template', (_, id: number) => {
+    if (!isPositiveInteger(id)) {
+      throw new Error('Invalid template ID')
+    }
+    return addonTemplateService.deleteTemplate(id)
+  })
+
+  ipcMain.handle('reorder-addon-templates', (_, templates) => {
+    if (!Array.isArray(templates)) {
+      throw new Error('Templates must be an array')
+    }
+    
+    // Validate each template
+    for (const template of templates) {
+      if (!isPositiveInteger(template.id) || !isPositiveInteger(template.sort_order)) {
+        throw new Error('Each template must have valid id and sort_order')
+      }
+    }
+
+    return addonTemplateService.reorderTemplates(templates)
+  })
+
+  ipcMain.handle('initialize-default-addon-templates', (_, projectId: number) => {
+    if (!isPositiveInteger(projectId)) {
+      throw new Error('Invalid project selected')
+    }
+    return addonTemplateService.initializeDefaultTemplates(projectId)
+  })
+
+  ipcMain.handle('migrate-addon-templates', (_, projectId: number) => {
+    if (!isPositiveInteger(projectId)) {
+      throw new Error('Invalid project selected')
+    }
+    return addonTemplateService.migrateFromChargesConfig(projectId)
   })
 }

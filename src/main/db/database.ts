@@ -65,6 +65,12 @@ class DatabaseService {
     console.log('[DATABASE] __dirname:', __dirname)
 
     this.db = new Database(dbPath)
+
+    // Register REGEXP function for SQLite
+    this.db.function('regexp', (pattern: string, value: string) => {
+      const regex = new RegExp(pattern)
+      return regex.test(value) ? 1 : 0
+    })
     this.db.pragma('journal_mode = WAL')
 
     // Step 1: Disable foreign keys during initialization and migration
@@ -307,7 +313,7 @@ class DatabaseService {
         if (!columns.some((c) => c.name === 'pincode'))
           this.db.exec('ALTER TABLE projects ADD COLUMN pincode TEXT')
         if (!columns.some((c) => c.name === 'status'))
-          this.db.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'Active'")
+          this.db.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'Sold'")
         if (!columns.some((c) => c.name === 'account_name'))
           this.db.exec('ALTER TABLE projects ADD COLUMN account_name TEXT')
         if (!columns.some((c) => c.name === 'branch'))
@@ -402,7 +408,7 @@ class DatabaseService {
         if (!columns.some((c) => c.name === 'sector_code'))
           this.db.exec('ALTER TABLE units ADD COLUMN sector_code TEXT')
         if (!columns.some((c) => c.name === 'status'))
-          this.db.exec("ALTER TABLE units ADD COLUMN status TEXT DEFAULT 'Active'")
+          this.db.exec("ALTER TABLE units ADD COLUMN status TEXT DEFAULT 'Sold'")
         if (!columns.some((c) => c.name === 'penalty'))
           this.db.exec('ALTER TABLE units ADD COLUMN penalty REAL DEFAULT 0')
         if (!columns.some((c) => c.name === 'billing_address'))

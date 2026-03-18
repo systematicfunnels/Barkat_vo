@@ -171,7 +171,7 @@ const Reports: React.FC = () => {
           owner_name: unit.owner_name,
           project_name: unit.project_name || 'N/A',
           unit_type: unit.unit_type || 'Plot',
-          unit_status: unit.status || 'Active',
+          unit_status: unit.status || 'Sold',
           total_billed: 0,
           total_paid: 0,
           outstanding: 0
@@ -696,7 +696,7 @@ const Reports: React.FC = () => {
       dataIndex: 'unit_status',
       key: 'unit_status',
       width: 80,
-      render: (status: string) => <Tag color={status === 'Active' ? 'green' : 'red'}>{status}</Tag>
+      render: (status: string) => <Tag color={status === 'Sold' ? 'green' : 'red'}>{status}</Tag>
     },
     // Yearly columns - now with all three metrics
     ...years.map((year) => ({
@@ -858,8 +858,8 @@ const Reports: React.FC = () => {
               onChange={setSelectedStatus}
               value={selectedStatus}
             >
-              <Option value="Active">Active</Option>
-              <Option value="Inactive">Inactive</Option>
+              <Option value="Sold">Sold</Option>
+              <Option value="Unsold">Unsold</Option>
             </Select>
             <Select
               mode="multiple"
@@ -900,7 +900,7 @@ const Reports: React.FC = () => {
             <div style={{ marginTop: 16 }}>
               <Space wrap>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Active filters:
+                  Applied filters:
                 </Text>
                 {searchText && (
                   <Tag closable onClose={() => setSearchText('')}>
@@ -1094,7 +1094,7 @@ const Reports: React.FC = () => {
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={5}>
                   <Text strong>
-                    {hasActiveFilters ? 'FILTERED TOTAL' : 'GRAND TOTAL'}
+                    {hasActiveFilters ? 'APPLIED TOTAL' : 'GRAND TOTAL'}
                     {pivotData.length < allPivotData.length &&
                       ` (${pivotData.length} of ${allPivotData.length} units)`}
                   </Text>

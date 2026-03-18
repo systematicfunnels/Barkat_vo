@@ -81,34 +81,47 @@ class PaymentService extends BasePDFGenerator {
   }
 
   public async generateReceiptPdf(paymentId: number): Promise<string> {
-    const payment = dbService.get<Payment>(
-      `
-      SELECT p.*, u.unit_number, u.owner_name, u.sector_code, pr.name as project_name, r.receipt_number
-      FROM payments p
-      JOIN units u ON p.unit_id = u.id
-      JOIN projects pr ON p.project_id = pr.id
-      LEFT JOIN receipts r ON p.id = r.payment_id
-      WHERE p.id = ?
-    `,
-      [paymentId]
-    )
+    try {
+      console.log('🧾 Generating receipt for payment:', paymentId)
+      
+      const payment = dbService.get<Payment>(
+        `
+        SELECT p.*, u.unit_number, u.owner_name, u.sector_code, pr.name as project_name, r.receipt_number
+        FROM payments p
+        JOIN units u ON p.unit_id = u.id
+        JOIN projects pr ON p.project_id = pr.id
+        LEFT JOIN receipts r ON p.id = r.payment_id
+        WHERE p.id = ?
+      `,
+        [paymentId]
+      )
 
-    if (!payment) throw new Error('Payment not found')
+      if (!payment) {
+        throw new Error(`Payment not found: ${paymentId}`)
+      }
 
-    await this.initializePDF()
+      console.log('📋 Payment data retrieved:', {
+        id: payment.id,
+        receipt_number: payment.receipt_number,
+        unit_number: payment.unit_number,
+        amount: payment.payment_amount,
+        financial_year: payment.financial_year
+      })
 
-    // Header
-    this.drawHeader(payment.project_name?.toUpperCase() || 'PAYMENT RECEIPT', 'PAYMENT RECEIPT')
+      await this.initializePDF()
 
-    // Receipt header section
-    this.layout.currentY -= 20
-    this.drawSectionHeader('PAYMENT RECEIPT')
+      // Header
+      this.drawHeader(payment.project_name?.toUpperCase() || 'PAYMENT RECEIPT', 'PAYMENT RECEIPT')
 
-    // Receipt details
-    this.layout.currentY -= 10
-    const receiptDetailsLeft = ['Receipt Number:', 'Payment Date:', 'Financial Year:']
-    const receiptDetailsRight = [payment.receipt_number || 'N/A', this.formatDate(payment.payment_date), payment.financial_year || 'N/A']
-    this.drawInfoGrid(receiptDetailsLeft, receiptDetailsRight)
+      // Receipt header section
+      this.layout.currentY -= 20
+      this.drawSectionHeader('PAYMENT RECEIPT')
+
+      // Receipt details
+      this.layout.currentY -= 10
+      const receiptDetailsLeft = ['Receipt Number:', 'Payment Date:', 'Financial Year:']
+      const receiptDetailsRight = [payment.receipt_number || 'N/A', this.formatDate(payment.payment_date), payment.financial_year || 'N/A']
+      this.drawInfoGrid(receiptDetailsLeft, receiptDetailsRight)
 
     // Recipient section with better formatting
     this.layout.currentY -= 20
@@ -157,15 +170,35 @@ class PaymentService extends BasePDFGenerator {
     // Footer with signature
     this.drawFooter('Receiver\'s Signature')
 
+    console.log('📄 Generating PDF document...')
     const pdfBytes = await this.pdfDoc.save()
+    
+    console.log('📁 Creating receipts directory...')
     const pdfDir = path.join(app.getPath('userData'), 'receipts')
-    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir)
+    if (!fs.existsSync(pdfDir)) {
+      console.log('📂 Creating directory:', pdfDir)
+      fs.mkdirSync(pdfDir, { recursive: true })
+    }
 
     const fileName = `Receipt_${payment.receipt_number || paymentId}.pdf`
     const filePath = path.join(pdfDir, fileName)
+    
+    console.log('💾 Writing receipt to:', filePath)
+    console.log('📊 File size:', pdfBytes.length, 'bytes')
+    
     fs.writeFileSync(filePath, pdfBytes)
-
+    
+    console.log('✅ Receipt generated successfully:', filePath)
     return filePath
+  } catch (error) {
+    console.error('❌ Receipt generation failed:', error)
+    console.error('🔍 Error details:', {
+      paymentId,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack available'
+    })
+    throw new Error(`Failed to generate receipt: ${error instanceof Error ? error.message : String(error)}`)
+  }
   }
 
   public update(id: number, payment: Partial<Payment>): boolean {
@@ -332,11 +365,18 @@ class PaymentService extends BasePDFGenerator {
       // Automatically generate a receipt number if not provided
       if (payment.payment_status !== 'Pending') {
         const receiptNumber = payment.receipt_number || `REC-${paymentId}`
-        dbService.run(
-          `INSERT INTO receipts (payment_id, receipt_number, receipt_date)
-           VALUES (?, ?, ?)`,
-          [paymentId, receiptNumber, payment.payment_date]
-        )
+        try {
+          console.log('🧾 Creating receipt record:', receiptNumber)
+          dbService.run(
+            `INSERT INTO receipts (payment_id, receipt_number, receipt_date)
+             VALUES (?, ?, ?)`,
+            [paymentId, receiptNumber, payment.payment_date]
+          )
+          console.log('✅ Receipt record created successfully:', receiptNumber)
+        } catch (error) {
+          console.error('❌ Failed to create receipt record:', error)
+          // Don't fail the payment, just log the error
+        }
       }
 
       if (resolvedLetterId) {

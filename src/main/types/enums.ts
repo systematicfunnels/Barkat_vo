@@ -4,13 +4,13 @@
  */
 
 export enum ProjectStatus {
-  ACTIVE = 'Active',
-  INACTIVE = 'Inactive'
+  ACTIVE = 'Sold',
+  INACTIVE = 'Unsold'
 }
 
 export enum UnitStatus {
-  ACTIVE = 'Active',
-  INACTIVE = 'Inactive',
+  ACTIVE = 'Sold',
+  INACTIVE = 'Unsold',
   VACANT = 'Vacant'
 }
 

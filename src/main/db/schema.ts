@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS projects (
   city TEXT,
   state TEXT,
   pincode TEXT,
-  status TEXT DEFAULT 'Active' CHECK(status IN ('Active', 'Inactive')), -- Active, Inactive
+  status TEXT DEFAULT 'Sold' CHECK(status IN ('Sold', 'Unsold')), -- Sold, Unsold
   letterhead_path TEXT,
   account_name TEXT,
   bank_name TEXT,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS units (
   billing_address TEXT,
   resident_address TEXT,
   penalty REAL DEFAULT 0 CHECK(penalty >= 0),
-  status TEXT DEFAULT 'Active' CHECK(status IN ('Active', 'Inactive', 'Vacant')), -- Active, Inactive, Vacant
+  status TEXT DEFAULT 'Sold' CHECK(status IN ('Sold', 'Unsold', 'Vacant')), -- Sold, Unsold, Vacant
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE(project_id, unit_number) ON CONFLICT REPLACE
@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS project_sector_payment_configs (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE(project_id, sector_code)
+);
+
+CREATE TABLE IF NOT EXISTS project_addon_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL,
+  addon_name TEXT NOT NULL,
+  addon_type TEXT NOT NULL CHECK(addon_type IN ('fixed', 'rate_per_sqft')),
+  amount REAL NOT NULL CHECK(amount >= 0),
+  is_enabled BOOLEAN DEFAULT 1,
+  sort_order INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS project_charges_config (

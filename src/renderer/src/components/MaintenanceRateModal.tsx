@@ -536,7 +536,7 @@ const MaintenanceRateModal: React.FC<MaintenanceRateModalProps> = ({
           <div style={{ marginBottom: 16 }}>
             <Space wrap>
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                Active filters:
+                Applied filters:
               </Text>
               {filterFY && (
                 <Tag

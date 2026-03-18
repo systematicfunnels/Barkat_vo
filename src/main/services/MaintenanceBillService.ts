@@ -402,7 +402,7 @@ class MaintenanceBillService {
       bungalow?: string
       status: string
     }>(
-      "SELECT * FROM units WHERE project_id = ? AND (LOWER(status) IN ('active', 'occupied', 'vacant'))",
+      "SELECT * FROM units WHERE project_id = ? AND (LOWER(status) IN ('sold', 'occupied', 'vacant'))",
       [pid]
     )
     console.log(`Found ${unitsList.length} units for project ${pid}`)
@@ -440,7 +440,7 @@ class MaintenanceBillService {
       if ((allUnitsCount?.count || 0) > 0) {
         throw new Error(`Units exist for Project "${projectName}" (ID: ${pid}) but none have valid statuses.
           
-          Found ${allUnitsCount?.count} units, but they might have statuses other than 'Active', 'Occupied', or 'Vacant'.
+          Found ${allUnitsCount?.count} units, but they might have statuses other than 'Sold', 'Occupied', or 'Vacant'.
           
           To fix this:
           1. Go to "Units" page.
@@ -451,7 +451,7 @@ class MaintenanceBillService {
       throw new Error(`No units found for Project "${projectName}" (ID: ${pid}). 
         Total units in DB for this project: ${allUnitsCount?.count || 0}. 
         Orphaned units (no project): ${orphanedUnits?.count || 0}.
-        Eligible statuses are: Active, Occupied, Vacant.
+        Eligible statuses are: Sold, Occupied, Vacant.
         
         To fix this:
         1. Go to "Units" page.

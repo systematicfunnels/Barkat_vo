@@ -112,9 +112,9 @@ class ProjectService {
 
   private normalizeProjectStatus(status: unknown): string {
     const normalized = this.sanitizeText(status).toLowerCase()
-    if (!normalized || normalized === 'active') return 'Active'
-    if (normalized === 'inactive') return 'Inactive'
-    return this.sanitizeText(status) || 'Active'
+    if (!normalized || normalized === 'sold' || normalized === 'active') return 'Sold'
+    if (normalized === 'unsold' || normalized === 'inactive') return 'Unsold'
+    return this.sanitizeText(status) || 'Sold'
   }
 
   private normalizeTemplateType(templateType: unknown): string {
@@ -249,7 +249,8 @@ class ProjectService {
     if (!normalized || normalized === 'flat' || normalized === 'bungalow') return 'Bungalow'
     if (normalized === 'plot') return 'Plot'
     if (normalized === 'all' || normalized === 'all units') return 'All'
-    return String(unitType || '').trim()
+    // Default to Bungalow for any unrecognized values to prevent database errors
+    return 'Bungalow'
   }
 
   private logDebug(message: string, ...args: unknown[]): void {
@@ -284,7 +285,7 @@ class ProjectService {
         project.city,
         project.state,
         project.pincode,
-        project.status || 'Active',
+        project.status || 'Sold',
         project.letterhead_path,
         project.account_name,
         project.bank_name,

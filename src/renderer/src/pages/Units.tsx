@@ -430,7 +430,7 @@ const Units: React.FC = () => {
         owner_name: ownerName || '',
         contact_number: contactNumber,
         email: emailAddress,
-        status: String(getValue(['status', 'occupancy']) || 'Active').trim(),
+        status: String(getValue(['status', 'occupancy']) || 'Sold').trim(),
         penalty: Number(getValue(['penalty', 'opening penalty', 'penalty amount']) || 0)
       }
     },
@@ -968,8 +968,8 @@ const Units: React.FC = () => {
       key: 'status',
       sorter: (a: Unit, b: Unit) => (a.status || '').localeCompare(b.status || ''),
       render: (status: string) => {
-        const color = status === 'Active' ? 'success' : 'default'
-        return <Tag color={color}>{status || 'Active'}</Tag>
+        const color = status === 'Sold' ? 'success' : 'default'
+        return <Tag color={color}>{status || 'Sold'}</Tag>
       }
     },
     {
@@ -1087,8 +1087,8 @@ const Units: React.FC = () => {
               onChange={setStatusFilter}
               value={statusFilter}
             >
-              <Option value="Active">Active</Option>
-              <Option value="Inactive">Inactive</Option>
+              <Option value="Sold">Sold</Option>
+              <Option value="Unsold">Unsold</Option>
             </Select>
             <Select
               placeholder="Unit Type"
@@ -1139,7 +1139,7 @@ const Units: React.FC = () => {
             <div style={{ marginTop: 16 }}>
               <Space wrap>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Active filters:
+                  Applied filters:
                 </Text>
                 {searchText && (
                   <Tag closable onClose={() => setSearchText('')} style={{ fontSize: '12px' }}>
@@ -1533,8 +1533,8 @@ const Units: React.FC = () => {
                           style={{ width: '100%', minWidth: '80px' }}
                           dropdownMatchSelectWidth={false}
                         >
-                          <Option value="Active">Active</Option>
-                          <Option value="Inactive">Inactive</Option>
+                          <Option value="Sold">Sold</Option>
+                          <Option value="Unsold">Unsold</Option>
                         </Select>
                       ),
                       responsive: ['sm']
@@ -1644,14 +1644,14 @@ const Units: React.FC = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ unit_type: 'Bungalow', status: 'Active' }}
+          initialValues={{ unit_type: 'Bungalow', status: 'Sold' }}
         >
           <Divider
             orientation={'left' as DividerProps['orientation']}
             plain
             style={{ marginTop: 0 }}
           >
-            Unit Information
+            Unit Inf
           </Divider>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Form.Item
@@ -1686,6 +1686,12 @@ const Units: React.FC = () => {
             <Form.Item name="area_sqft" label="Area (sqft)" rules={[{ required: true }]}>
               <InputNumber style={{ width: '100%' }} />
             </Form.Item>
+            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+              <Select>
+                <Option value="Sold">Sold</Option>
+                <Option value="Unsold">Unsold</Option>
+              </Select>
+            </Form.Item>
             <Form.Item name="penalty" label="Opening Penalty">
               <InputNumber
                 style={{ width: '100%' }}
@@ -1695,18 +1701,6 @@ const Units: React.FC = () => {
                 }
               />
             </Form.Item>
-            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-              <Select>
-                <Option value="Active">Active</Option>
-                <Option value="Inactive">Inactive</Option>
-              </Select>
-            </Form.Item>
-          </div>
-
-          <Divider orientation={'left' as DividerProps['orientation']}>Owner Information</Divider>
-          <Form.Item name="owner_name" label="Owner Name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Form.Item name="contact_number" label="Contact Number">
               <Input />
@@ -1714,6 +1708,7 @@ const Units: React.FC = () => {
             <Form.Item name="email" label="Email">
               <Input />
             </Form.Item>
+          </div>
           </div>
         </Form>
       </Modal>
