@@ -62,6 +62,9 @@ class MaintenanceLetterService extends BasePDFGenerator {
   private resolveQrCodePath(qrCodePath: string): string | null {
     if (!qrCodePath) return null
     
+    console.log('🔍 QR Code Path Resolution Debug:')
+    console.log('  Input path:', qrCodePath)
+    
     // Try multiple possible locations
     const possiblePaths = [
       // Original path (absolute)
@@ -80,12 +83,23 @@ class MaintenanceLetterService extends BasePDFGenerator {
         : null
     ].filter((path): path is string => Boolean(path))
     
+    console.log('  Attempting paths:')
+    possiblePaths.forEach((p, i) => {
+      const exists = fs.existsSync(p)
+      console.log(`    ${i + 1}. ${p} - ${exists ? '✅ EXISTS' : '❌ NOT FOUND'}`)
+      if (exists) {
+        console.log('  ✅ Found QR code at:', p)
+        return p
+      }
+    })
+    
     for (const possiblePath of possiblePaths) {
       if (fs.existsSync(possiblePath)) {
         return possiblePath
       }
     }
     
+    console.log('  ❌ QR code not found in any location')
     return null
   }
 
@@ -604,37 +618,60 @@ class MaintenanceLetterService extends BasePDFGenerator {
 
       // Implement enhanced QR code embedding with better path resolution
       try {
+        console.log('🔍 QR Code Debug - Looking for:', qrCodePath)
         const resolvedQrPath = this.resolveQrCodePath(qrCodePath)
         
         if (resolvedQrPath) {
+          console.log('✅ QR Code Debug - Found at:', resolvedQrPath)
           const qrExt = path.extname(resolvedQrPath).toLowerCase()
           const isSupportedImage = qrExt === '.png' || qrExt === '.jpg' || qrExt === '.jpeg'
           
           if (isSupportedImage) {
+            console.log('📷 QR Code Debug - Reading image file...')
             const qrImageBytes = fs.readFileSync(resolvedQrPath)
+            console.log('📊 QR Code Debug - Image size:', qrImageBytes.length, 'bytes')
+            
             const qrImage = qrExt === '.png' 
               ? await this.pdfDoc.embedPng(qrImageBytes)
               : await this.pdfDoc.embedJpg(qrImageBytes)
             
+            // Calculate proper QR code position - ensure it fits within page bounds
+            const qrSize = 80
+            const qrX = this.layout.width - this.MARGIN - qrSize - 20 // 20px from right margin
+            const qrY = this.layout.currentY - 20
+            
+            console.log('🎯 QR Code Debug - Drawing at position:', {
+              x: qrX,
+              y: qrY,
+              width: qrSize,
+              height: qrSize,
+              currentY: this.layout.currentY,
+              pageWidth: this.layout.width,
+              margin: this.MARGIN,
+              maxX: this.layout.width - this.MARGIN
+            })
+            
             this.page.drawImage(qrImage, {
-              x: 450,
-              y: this.layout.currentY - 20,
-              width: 80,
-              height: 80
+              x: qrX,
+              y: qrY,
+              width: qrSize,
+              height: qrSize
             })
             
             this.page.drawText('Scan to Pay', {
-              x: 460,
-              y: this.layout.currentY - 35,
+              x: qrX + 10,
+              y: qrY - 15,
               size: 8,
               font: this.fonts.regular,
               color: this.COLORS.TEXT
             })
+            console.log('✅ QR Code Debug - Successfully embedded')
           } else {
             console.warn(`Unsupported QR code format: ${qrExt}. Supported formats: PNG, JPG, JPEG`)
           }
         } else {
           // Show placeholder when QR code is missing
+          console.warn('❌ QR Code Debug - File not found, showing placeholder')
           this.page.drawText('QR Code: File not found - Please update QR code path in project settings', {
             x: this.MARGIN,
             y: this.layout.currentY,

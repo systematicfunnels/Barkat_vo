@@ -241,6 +241,11 @@ const Payments: React.FC = () => {
 
   const handleBulkAdd = (): void => {
     bulkForm.resetFields()
+    bulkForm.setFieldsValue({ 
+      payment_date: dayjs(), 
+      payment_mode: 'Transfer',
+      financial_year: defaultFY 
+    })
     setBulkPayments([])
     setBulkProject(null)
     setIsBulkModalOpen(true)
@@ -1147,19 +1152,15 @@ const Payments: React.FC = () => {
                           disabled={false} // Allow manual correction even with letter selected
                           showSearch
                           filterOption={(input, option) => {
-                            if (!option || !option.children) return false
-                            
-                            // Format the search input
+                            const optionText = option?.children?.toString() || ''
                             const formattedSearch = formatFinancialYear(input)
-                            const optionText = String(option.children)
-                            
-                            // Check if formatted search matches option
                             return optionText.includes(formattedSearch) || 
                                    optionText.toLowerCase().includes(input.toLowerCase())
                           }}
                           aria-label="Select financial year for payment"
                         >
                           {Array.from(new Set(letters.map((l) => l.financial_year)))
+                            .filter(fy => /^\d{4}-\d{2}$/.test(fy)) // Only show valid formats
                             .sort()
                             .reverse()
                             .map((fy) => (
@@ -1286,7 +1287,13 @@ const Payments: React.FC = () => {
             <Form.Item
               name="financial_year"
               label="Financial Year"
-              rules={[{ required: true, message: 'Please select financial year' }]}
+              rules={[
+                { required: true, message: 'Please select financial year' },
+                {
+                  pattern: /^\d{4}-\d{2}$/,
+                  message: 'Format must be YYYY-YY (e.g., 2024-25)'
+                }
+              ]}
               style={{ flex: 1 }}
             >
               <Select
@@ -1294,6 +1301,7 @@ const Payments: React.FC = () => {
                 aria-label="Select financial year for bulk payments"
               >
                 {Array.from(new Set(letters.map((l) => l.financial_year)))
+                  .filter(fy => /^\d{4}-\d{2}$/.test(fy)) // Only show valid formats
                   .sort()
                   .reverse()
                   .map((fy) => (
