@@ -3,8 +3,14 @@ import { Breadcrumb } from 'antd'
 import { Link } from 'react-router-dom'
 import { HomeOutlined } from '@ant-design/icons'
 
+interface BreadcrumbItem {
+  label: string
+  path?: string
+  icon?: React.ReactNode
+}
+
 interface BreadcrumbNavigationProps {
-  items?: Array<{
+  items: Array<{
     label: string
     path?: string
     icon?: React.ReactNode
@@ -12,9 +18,9 @@ interface BreadcrumbNavigationProps {
   homePath?: string
 }
 
-const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
-  items = [],
-  homePath = '/'
+const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({ 
+  items, 
+  homePath = '/' 
 }) => {
   const breadcrumbItems = [
     {
@@ -25,7 +31,8 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
     ...items
   ]
 
-  const itemRender = (item: any) => {
+  const itemRender = (route: any) => {
+    const item = route as BreadcrumbItem
     if (item.path) {
       return (
         <Link to={item.path}>

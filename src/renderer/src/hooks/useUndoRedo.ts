@@ -15,7 +15,7 @@ export interface UndoRedoOptions<T> {
   onRedo?: (operation: OperationHistory<T>) => void
 }
 
-export const useUndoRedo = <T = any>(options: UndoRedoOptions<T> = {}) => {
+export const useUndoRedo = <T extends Record<string, unknown>>(options: UndoRedoOptions<T> = {}) => {
   const { maxHistory = 50, onUndo, onRedo } = options
 
   const [history, setHistory] = useState<OperationHistory<T>[]>([])

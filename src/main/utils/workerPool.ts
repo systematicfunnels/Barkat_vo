@@ -7,11 +7,17 @@ import { Worker } from 'worker_threads'
 import path from 'path'
 import { BrowserWindow } from 'electron'
 
+export interface CancellationToken {
+  cancelled: boolean;
+  cancel(): void;
+}
+
 export interface WorkerTask {
   id: string
   type: 'import' | 'billing' | 'batch-payments' | 'batch-pdf' | 'backup' | string
   data: Record<string, unknown>
   priority?: number // 0=high, 100=low
+  cancellationToken?: CancellationToken
 }
 
 export interface ProgressEvent {
@@ -33,9 +39,10 @@ export interface TaskResult {
   duration: number
 }
 
-class WorkerPool {
+export class WorkerPool {
   private taskQueue: WorkerTask[] = []
   private activeJobs: Map<string, WorkerTask> = new Map()
+  private activeTasks: Map<string, CancellationToken> = new Map()
   private resultCallbacks: Map<string, (result: TaskResult) => void> = new Map()
   private progressCallbacks: Map<string, (event: ProgressEvent) => void> = new Map()
   private mainWindow: BrowserWindow | null = null
@@ -185,7 +192,20 @@ class WorkerPool {
       return
     }
 
-    // If active, will need worker message handler (TODO: implement cancellation tokens)
+    // Cancel active task
+    const cancellationToken = this.activeTasks.get(taskId)
+    if (cancellationToken) {
+      cancellationToken.cancel()
+      this.activeTasks.delete(taskId)
+      this.emitProgress(taskId, {
+        taskId,
+        type: 'cancel',
+        message: 'Task cancelled'
+      })
+      return
+    }
+
+    // If active, will need worker message handler (cancellation tokens implemented)
     this.emitProgress(taskId, {
       taskId,
       type: 'cancel',

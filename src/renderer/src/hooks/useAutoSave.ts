@@ -18,7 +18,7 @@ export interface AutoSaveOptions<T> {
   debounce?: number
 }
 
-export const useAutoSave = <T extends Record<string, any>>(options: AutoSaveOptions<T>) => {
+export const useAutoSave = <T extends Record<string, unknown>>(options: AutoSaveOptions<T>) => {
   const {
     initialData,
     saveFunction,

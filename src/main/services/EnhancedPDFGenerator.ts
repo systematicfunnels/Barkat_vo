@@ -50,6 +50,11 @@ export interface RecipientDetails {
  * Enhanced Base PDF Generator with standardized components
  */
 export abstract class BasePDFGenerator {
+  protected readonly contactInfo = {
+    email: process.env.CONTACT_EMAIL || 'info@barkatmanagement.com',
+    phone: process.env.CONTACT_PHONE || '+91-XXXXXXXXXX'
+  }
+
   protected readonly COLORS: PDFColors = {
     PRIMARY: rgb(CONFIG.PDF.COLORS.NAVY.r, CONFIG.PDF.COLORS.NAVY.g, CONFIG.PDF.COLORS.NAVY.b),
     SECONDARY: rgb(0.85, 0.65, 0.13), // Gold accent
@@ -142,7 +147,7 @@ export abstract class BasePDFGenerator {
     })
 
     this.layout.currentY -= 15
-    this.page.drawText('Email: info@barkatmanagement.com | Phone: +91-XXXXXXXXXX', {
+    this.page.drawText(`Email: ${this.contactInfo.email} | Phone: ${this.contactInfo.phone}`, {
       x: this.MARGIN,
       y: this.layout.currentY,
       size: 9,

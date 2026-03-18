@@ -158,7 +158,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }}
         >
           <div style={{ maxWidth: 1600, margin: '0 auto' }}>
-            <BreadcrumbNavigation />
+            <BreadcrumbNavigation items={[]} />
             {children}
           </div>
         </Content>

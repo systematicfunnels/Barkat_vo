@@ -49,6 +49,11 @@ export interface LetterAddOn {
 }
 
 class MaintenanceLetterService extends BasePDFGenerator {
+  protected readonly contactInfo = {
+    email: process.env.CONTACT_EMAIL || 'info@barkatmanagement.com',
+    phone: process.env.CONTACT_PHONE || '+91-XXXXXXXXXX'
+  }
+
   public getAll(): MaintenanceLetter[] {
     return dbService.query<MaintenanceLetter>(`
       SELECT l.*, u.unit_number, u.owner_name, u.unit_type, p.name as project_name,
@@ -402,7 +407,7 @@ class MaintenanceLetterService extends BasePDFGenerator {
     })
 
     this.layout.currentY -= 15
-    this.page.drawText('Email: info@barkatmanagement.com | Phone: +91-XXXXXXXXXX', {
+    this.page.drawText(`Email: ${this.contactInfo.email} | Phone: ${this.contactInfo.phone}`, {
       x: this.MARGIN,
       y: this.layout.currentY,
       size: 9,

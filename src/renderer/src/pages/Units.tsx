@@ -731,7 +731,9 @@ const Units: React.FC = () => {
         }
       })
 
-      console.log('Sending ledger to importLedger:', rowsToImport)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Sending ledger to importLedger:', rowsToImport)
+      }
       await window.api.units.importLedger({
         projectId: Number(importProjectId),
         rows: rowsToImport

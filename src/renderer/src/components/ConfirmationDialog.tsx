@@ -1,6 +1,6 @@
 import React from 'react'
-import { Modal, Typography } from 'antd'
-import { ExclamationCircleOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons'
+import { Modal, Button, Typography } from 'antd'
+import { DeleteOutlined, ExclamationCircleOutlined, WarningOutlined } from '@ant-design/icons'
 
 interface ConfirmationDialogProps {
   visible: boolean
@@ -12,8 +12,8 @@ interface ConfirmationDialogProps {
   confirmText?: string
   cancelText?: string
   loading?: boolean
-  okButtonProps?: any
-  cancelButtonProps?: any
+  okButtonProps?: Omit<React.ComponentProps<typeof Button>, 'onClick' | 'loading'>
+  cancelButtonProps?: Omit<React.ComponentProps<typeof Button>, 'onClick' | 'loading'>
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({

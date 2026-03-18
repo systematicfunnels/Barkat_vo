@@ -1,0 +1,667 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for preload/index.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">preload</a> index.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/97</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/26</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/74</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/91</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { contextBridge, ipcRenderer } from 'electron'
+import { electronAPI }<span class="cstat-no" title="statement not covered" > from '@electron-toolkit/preload'<span class="fstat-no" title="function not covered" ></span></span>
+impo<span class="cstat-no" title="statement not covered" >rt {<span class="cstat-no" title="statement not covered" ></span></span>
+  Project,<span class="cstat-no" title="statement not covered" ></span>
+  Pr<span class="cstat-no" title="statement not covered" >ojectSetupSummary,</span>
+  Proj<span class="cstat-no" title="statement not covered" >ectSectorPaymentConfig,<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span></span>
+  StandardWorkbookProjectImportPayload,
+  St<span class="cstat-no" title="statement not covered" >andardWorkbookProjectImportResult,</span>
+  Unit<span class="fstat-no" title="function not covered" >,</span>
+  Ma<span class="cstat-no" title="statement not covered" >intenanceRate,<span class="cstat-no" title="statement not covered" ></span></span>
+  Ma<span class="cstat-no" title="statement not covered" >intenanceSlab,</span>
+  Payment,
+  LetterCalculation<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+} fr<span class="cstat-no" title="statement not covered" >om './types'<span class="cstat-no" title="statement not covered" ><span class="cstat-no" title="statement not covered" ></span></span></span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >export * from './types'</span>
+<span class="cstat-no" title="statement not covered" ></span>
+// Custom APIs for<span class="cstat-no" title="statement not covered" > renderer</span>
+<span class="cstat-no" title="statement not covered" >const api = {</span>
+  projects: {
+    getAll: <span class="cstat-no" title="statement not covered" >() =&gt; ipcRenderer.invoke('get-projects'),</span>
+    getById: (id: number) =&gt; ipcRenderer.invoke('get-project', id),
+    getSetupSumm<span class="fstat-no" title="function not covered" >ar</span>y: (<span class="cstat-no" title="statement not covered" >projectId: number, financialYear?: string) =&gt;</span>
+      ipcRenderer<span class="fstat-no" title="function not covered" >.i</span>nvoke(<span class="cstat-no" title="statement not covered" ></span>
+        'get-project-setu<span class="fstat-no" title="function not covered" >p-</span>summary',<span class="cstat-no" title="statement not covered" ></span>
+        projectId,<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+        financia<span class="fstat-no" title="function not covered" >lY</span>ear<span class="cstat-no" title="statement not covered" ></span>
+      ) as Promi<span class="fstat-no" title="function not covered" >se</span>&lt;ProjectSetupSu<span class="cstat-no" title="statement not covered" >mmary&gt;,</span>
+    getSetupSummaries: (financial<span class="fstat-no" title="function not covered" >Ye</span>ar?: string) <span class="cstat-no" title="statement not covered" >=&gt;</span>
+      ipcRenderer.invoke('get-proj<span class="fstat-no" title="function not covered" >ec</span>t-setup-summaries', fi<span class="cstat-no" title="statement not covered" >nancialYear) as Promise&lt;</span>
+        ProjectSetupSummary[]<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+      &gt;,<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    create: (project<span class="fstat-no" title="function not covered" >: </span>Project<span class="cstat-no" title="statement not covered" >) =&gt; ipcRenderer.invoke('create-project', project),</span>
+    update: (id: number, pr<span class="fstat-no" title="function not covered" >oj</span>ect: Partial&lt;Project&gt;) =&gt;<span class="cstat-no" title="statement not covered" ></span>
+      ipcRenderer.invoke('update-project', id, project),
+    getSectorPaymentConfigs: (projectId: number) =&gt;
+      ipcRendere<span class="fstat-no" title="function not covered" >r.</span>invo<span class="cstat-no" title="statement not covered" >ke('get-project-sector-configs', projectId)</span> as Promise&lt;
+        ProjectSectorP<span class="fstat-no" title="function not covered" >ay</span>mentConfig[]<span class="cstat-no" title="statement not covered" ></span>
+      &gt;,<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    saveSectorPa<span class="fstat-no" title="function not covered" >ym</span>entConfigs: <span class="cstat-no" title="statement not covered" >(projectId: number, configs: Partial&lt;ProjectSectorPayme</span>ntConfig&gt;[]) =&gt;
+      ipcRendere<span class="fstat-no" title="function not covered" >r.</span>invoke<span class="cstat-no" title="statement not covered" >('save-project-sector-configs', projectId, config</span>s),
+    importStandardWo<span class="fstat-no" title="function not covered" >rk</span>bookPro<span class="cstat-no" title="statement not covered" >ject: (payload: StandardWorkbookProjectImportPayload) =&gt;</span>
+      ipcRenderer.in<span class="fstat-no" title="function not covered" >vo</span>ke(<span class="cstat-no" title="statement not covered" ></span>
+        'import-standa<span class="fstat-no" title="function not covered" >rd</span>-workbook-<span class="cstat-no" title="statement not covered" >project',</span>
+        payload
+      ) as Promise&lt;StandardWorkbookProjectImportResult&gt;,
+    delete: (id:<span class="fstat-no" title="function not covered" > n</span>umbe<span class="cstat-no" title="statement not covered" >r) =&gt; ipcRenderer.invoke('delete-project', id</span>),
+    bulkDelete: (<span class="fstat-no" title="function not covered" >id</span>s: num<span class="cstat-no" title="statement not covered" >ber[]) =&gt; ipcRenderer.invoke('bulk-delete-projec</span>ts', ids),
+    getDashboardStats<span class="fstat-no" title="function not covered" >: </span>(<span class="cstat-no" title="statement not covered" ></span>
+      projectId?<span class="fstat-no" title="function not covered" >: </span>number<span class="cstat-no" title="statement not covered" >,</span>
+      financialYear?<span class="fstat-no" title="function not covered" >: </span>string,<span class="cstat-no" title="statement not covered" ></span>
+      unitType?: stri<span class="fstat-no" title="function not covered" >ng</span>,<span class="cstat-no" title="statement not covered" ></span>
+      status?: stri<span class="fstat-no" title="function not covered" >ng<span class="cstat-no" title="statement not covered" ></span></span>
+    ) =&gt; ipcRenderer.i<span class="fstat-no" title="function not covered" >nv</span>oke(<span class="cstat-no" title="statement not covered" >'get-dashboard-stats', projectId, financialYear,</span> unitType, status)
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  units: {<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    getAll: () =&gt; ipcRenderer.invoke('get-units'),
+    getByProject: (projectId: number) =&gt; ipcRenderer.invoke('get-units-by-project', projectId),
+    create: (uni<span class="fstat-no" title="function not covered" >t:</span> Uni<span class="cstat-no" title="statement not covered" >t) =&gt; ipcRenderer.invoke('create-unit', uni</span>t),
+    update: (id: numbe<span class="fstat-no" title="function not covered" >r,</span> unit: Partia<span class="cstat-no" title="statement not covered" >l&lt;Unit&gt;) =&gt; ipcRenderer.invoke('update-unit', id, unit),</span>
+    delete: (id:<span class="fstat-no" title="function not covered" > n</span>umber) =<span class="cstat-no" title="statement not covered" >&gt; ipcRenderer.invoke('delete-unit', id),</span>
+    bulkDelete: <span class="fstat-no" title="function not covered" >(i</span>ds: number[]<span class="cstat-no" title="statement not covered" >) =&gt; ipcRenderer.invoke('bulk-delete-units', ids),</span>
+    bulkCreate: <span class="fstat-no" title="function not covered" >(u</span>nits: <span class="cstat-no" title="statement not covered" >Unit[]) =&gt; ipcRenderer.invoke('bulk-create-units'</span>, units),
+    importLedger: <span class="fstat-no" title="function not covered" >(p</span>arams: { p<span class="cstat-no" title="statement not covered" >rojectId: number; rows: Record&lt;string, unknown&gt;[] }</span>) =&gt;
+      ipcRenderer<span class="fstat-no" title="function not covered" >.i</span>nvoke('i<span class="cstat-no" title="statement not covered" >mport-ledger', params)</span>
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  letters: {
+    getAll: () =&gt; ipcRenderer.invoke('get-letters'),
+    getById: (id<span class="fstat-no" title="function not covered" >: </span>numb<span class="cstat-no" title="statement not covered" >er) =&gt; ipcRenderer.invoke('get-letter', id),</span>
+    createBatch:<span class="fstat-no" title="function not covered" > (</span>params: {<span class="cstat-no" title="statement not covered" ></span>
+      projectId:<span class="fstat-no" title="function not covered" > n</span>umber<span class="cstat-no" title="statement not covered" ></span>
+      unitIds?: <span class="fstat-no" title="function not covered" >nu</span>mber[]<span class="cstat-no" title="statement not covered" ></span>
+      financialYear:<span class="fstat-no" title="function not covered" > s</span>tring<span class="cstat-no" title="statement not covered" ></span>
+      letterDate: string<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+      dueDate: string
+      addOns?: { addon_name: string; addon_amount: number }[]
+    }) =&gt; ipcRenderer.invo<span class="fstat-no" title="function not covered" >ke</span>('create<span class="cstat-no" title="statement not covered" >-batch-letters', params),</span>
+    delete: (id: number) =&gt; ipcRenderer.invoke('delete-letter', id),
+    bulkDelete: (ids: number[]) =&gt; ipcRenderer.invoke('bulk-delete-letters', ids),
+    generatePdf: (id<span class="fstat-no" title="function not covered" >: </span>number) =&gt; <span class="cstat-no" title="statement not covered" >ipcRenderer.invoke('generate-letter-pdf', id),</span>
+    getAddOns: (id: number) =&gt; ipcRenderer.invoke('get-letter-addons', id),
+    getAllAddOns: () =&gt; ipcRenderer.invoke('get-all-addons'),
+    addAddOn: (p<span class="fstat-no" title="function not covered" >ar</span>ams:<span class="cstat-no" title="statement not covered" > {</span>
+      unit_id: number
+      financial_year: string
+      addon_name<span class="fstat-no" title="function not covered" >: </span>stri<span class="cstat-no" title="statement not covered" >ng</span>
+      addon_amou<span class="fstat-no" title="function not covered" >nt</span>: number<span class="cstat-no" title="statement not covered" ></span>
+      remarks?: <span class="fstat-no" title="function not covered" >st</span>ring<span class="cstat-no" title="statement not covered" ></span>
+    }) =&gt; ipcRenderer.invoke('add-letter-addon', params),
+    deleteAddOn: (id: number) =&gt; ipcRenderer.invoke('delete-letter-addon', id)
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  rates: {<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    getAll: () =&gt; ipcRenderer.invoke('get-rates'),
+    getByProject: (projectId: number) =&gt; ipcRenderer.invoke('get-rates-by-project', projectId),
+    create: (rate: Main<span class="fstat-no" title="function not covered" >te</span>nanceRate) =&gt; ipcRe<span class="cstat-no" title="statement not covered" >nderer.invoke('create-rate', rate),</span>
+    update: (id: number,<span class="fstat-no" title="function not covered" > r</span>ate: Partial&lt;MaintenanceRate&gt;) =&gt;<span class="cstat-no" title="statement not covered" ></span>
+      ipcRenderer.invoke<span class="fstat-no" title="function not covered" >('</span>update-rate', id, rat<span class="cstat-no" title="statement not covered" >e),</span>
+    delete: (id: number) =&gt; ipcRenderer.invoke('delete-rate', id),
+    getSlabs: (rateId: number) =&gt; ipcRenderer.invoke('get-slabs', rateId),
+    addSlab: (slab: M<span class="fstat-no" title="function not covered" >ai</span>ntenanceSlab) =&gt; i<span class="cstat-no" title="statement not covered" >pcRenderer.invoke('add-slab', slab),</span>
+    deleteSlab: (id<span class="fstat-no" title="function not covered" >: </span>number) =&gt;<span class="cstat-no" title="statement not covered" > ipcRenderer.invoke('delete-slab', id)</span>
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  payments: {<span class="fstat-no" title="function not covered" ></span>
+    getAll: <span class="cstat-no" title="statement not covered" >() =&gt; ipcRenderer.invoke('get-payments'),<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span></span>
+    create: (payment: Payment) =&gt; ipcRenderer.invoke('create-payment', payment),
+    update: (id: number, payment: Partial&lt;Payment&gt;) =&gt; ipcRenderer.invoke('update-payment', id, payment),
+    delete: (id: number) =&gt; ipcRenderer.invoke('delete-payment', id),
+    bulkDelete: (ids: <span class="fstat-no" title="function not covered" >nu</span>mber[]) =<span class="cstat-no" title="statement not covered" >&gt; ipcRenderer.invoke('bulk-delete-payments', ids),</span>
+    generateReceiptPdf: <span class="fstat-no" title="function not covered" >(i</span>d: n<span class="cstat-no" title="statement not covered" >umber) =&gt; ipcRenderer.invoke('generate-receipt-pdf</span>', id)
+  },
+  shell: {
+    showItemInFolder: <span class="fstat-no" title="function not covered" >(p</span>ath:<span class="cstat-no" title="statement not covered" > string) =&gt; ipcRenderer.invoke('show-item-in-fo</span>lder', path)
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  dialog: {<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    selectFile: (options:<span class="fstat-no" title="function not covered" > {</span> title?: string;<span class="cstat-no" title="statement not covered" > filters?: { name: string; extensions: string[] }[] }) =&gt;</span>
+      ipcRenderer.invoke<span class="fstat-no" title="function not covered" >('</span>sele<span class="cstat-no" title="statement not covered" >ct-local-file', options) as Promise&lt;string | null&gt;</span>
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  database: {
+    repair: () =&gt; ipcRenderer.invoke('database-repair')
+  },<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+  settings: {<span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ></span></span>
+    getAll: () =&gt; ipcRenderer.invoke('get-settings'),
+    update: (key: string, value: string) =&gt; ipcRenderer.invoke('update-setting', key, value),
+    delete: (key: string) =&gt; ipcRenderer.invoke('delete-setting', key)
+  },
+  detailedLetters: {
+<span class="cstat-no" title="statement not covered" >    generateLetter: (projectId: number, unitId: number, financialYear: string) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >      ipcRenderer.invoke(</span>
+<span class="cstat-no" title="statement not covered" >        'generate-detailed-letter',</span>
+<span class="cstat-no" title="statement not covered" >        projectId,</span>
+        unitId,
+        financialYear
+      ) <span class="cstat-no" title="statement not covered" >as Promise&lt;LetterCalcu</span>lation&gt;,
+    generatePdf: (projectId: number, unitId: number, financialYear: string) =&gt;
+      ipcRenderer.invoke(
+        'generate-detailed-pdf',
+        projectId,
+<span class="cstat-no" title="statement not covered" >        unitId,</span>
+        financialYear
+<span class="cstat-no" title="statement not covered" >      ) as Promise&lt;str</span>ing&gt;
+  },
+  dryRun: {
+    previewImport: (projectId: number, rows: unknown[]) =&gt;
+      ipcRenderer.invoke('dry-run-import', projectId, rows),
+    previewBilling: (projectId: number, financialYear: string, unitIds?: number[]) =&gt;
+      ipcRenderer.invoke('dry-run-billing', projectId, financialYear, unitIds),
+    previewPayment: (unitId: number, projectId: number) =&gt;
+      ipcRenderer.invoke('dry-run-payment', unitId, projectId)
+  },
+  worker: {
+    enqueueTask: (taskType: string, data: Record&lt;string, unknown&gt;) =&gt;
+      ipcRenderer.invoke('enqueue-worker-task', taskType, data),
+    getStatus: (taskId: string) =&gt; ipcRenderer.invoke('worker-task-status', taskId),
+    cancel: (taskId: string) =&gt; ipcRenderer.invoke('worker-task-cancel', taskId),
+    onProgress: (callback: (event: unknown) =&gt; void) =&gt; {
+      ipcRenderer.on('worker-progress', (_, event) =&gt; callback(event))
+    }
+  },
+  logging: {
+    getErrorLogs: (limit?: number) =&gt; ipcRenderer.invoke('get-error-logs', limit),
+    clearErrorLogs: () =&gt; ipcRenderer.invoke('clear-error-logs')
+  },
+  backup: {
+    createBackup: () =&gt; ipcRenderer.invoke('create-backup'),
+    restoreBackup: (backupPath: string) =&gt; ipcRenderer.invoke('restore-backup', backupPath),
+    listBackups: () =&gt; ipcRenderer.invoke('list-backups'),
+    startAutoBackup: (intervalDays?: number) =&gt;
+      ipcRenderer.invoke('start-auto-backup', intervalDays),
+    stopAutoBackup: () =&gt; ipcRenderer.invoke('stop-auto-backup'),
+    getConfig: () =&gt; ipcRenderer.invoke('get-backup-config')
+  },
+  batch: {
+    createPayments: (payments: Payment[]) =&gt; ipcRenderer.invoke('batch-create-payments', payments),
+    deletePayments: (paymentIds: number[]) =&gt;
+      ipcRenderer.invoke('batch-delete-payments', paymentIds)
+  }
+}
+&nbsp;
+// Use `contextBridge` APIs to expose Electron APIs to
+// renderer only if context isolation is enabled, otherwise
+// just add to the DOM global.
+if (process.contextIsolated) {
+  try {
+    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('api', api)
+  } catch (error) {
+    console.error(error)
+  }
+} else {
+  // @ts-ignore (define in dts)
+  window.electron = electronAPI
+  // @ts-ignore (define in dts)
+  window.api = api
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-03-18T05:11:50.599Z
+            </div>
+        <script src="../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
+    </body>
+</html>
+    
