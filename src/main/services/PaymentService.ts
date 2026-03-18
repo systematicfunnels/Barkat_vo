@@ -21,6 +21,13 @@ export interface Payment {
   project_name?: string
   receipt_number?: string
   financial_year?: string
+  contact_number?: string
+  account_name?: string
+  bank_name?: string
+  account_no?: string
+  ifsc_code?: string
+  branch?: string
+  branch_address?: string
 }
 
 export interface Receipt {
@@ -86,7 +93,9 @@ class PaymentService extends BasePDFGenerator {
       
       const payment = dbService.get<Payment>(
         `
-        SELECT p.*, u.unit_number, u.owner_name, u.sector_code, pr.name as project_name, r.receipt_number
+        SELECT p.*, u.unit_number, u.owner_name, u.contact_number, u.sector_code, 
+               pr.name as project_name, pr.account_name, pr.bank_name, pr.account_no, 
+               pr.ifsc_code, pr.branch, pr.branch_address, r.receipt_number
         FROM payments p
         JOIN units u ON p.unit_id = u.id
         JOIN projects pr ON p.project_id = pr.id
@@ -128,8 +137,8 @@ class PaymentService extends BasePDFGenerator {
     this.drawSectionHeader('RECIPIENT DETAILS')
     this.layout.currentY -= 10
     
-    const recipientDetailsLeft = ['Unit Number:', 'Owner Name:', 'Project:']
-    const recipientDetailsRight = [payment.unit_number || 'N/A', payment.owner_name || 'N/A', payment.project_name || 'N/A']
+    const recipientDetailsLeft = ['Unit Number:', 'Owner Name:', 'Contact:', 'Project:']
+    const recipientDetailsRight = [payment.unit_number || 'N/A', payment.owner_name || 'N/A', payment.contact_number || 'N/A', payment.project_name || 'N/A']
     this.drawInfoGrid(recipientDetailsLeft, recipientDetailsRight)
 
     // Payment amount table
@@ -169,6 +178,17 @@ class PaymentService extends BasePDFGenerator {
 
     // Footer with signature
     this.drawFooter('Receiver\'s Signature')
+
+    // Bank details section
+    this.layout.currentY -= 30
+    this.drawBankDetails({
+      account_name: payment.account_name,
+      bank_name: payment.bank_name,
+      account_no: payment.account_no,
+      ifsc_code: payment.ifsc_code,
+      branch: payment.branch,
+      branch_address: payment.branch_address
+    })
 
     console.log('📄 Generating PDF document...')
     const pdfBytes = await this.pdfDoc.save()
@@ -386,6 +406,47 @@ class PaymentService extends BasePDFGenerator {
       }
 
       return paymentId
+    })
+  }
+
+  /**
+   * Draw bank details section
+   */
+  private drawBankDetails(bank: {
+    account_name?: string
+    bank_name?: string
+    account_no?: string
+    ifsc_code?: string
+    branch?: string
+    branch_address?: string
+  }): void {
+    this.page.drawText('Bank Details for Payment:', {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 10,
+      font: this.fonts.bold,
+      color: this.COLORS.PRIMARY
+    })
+
+    this.layout.currentY -= 20
+
+    const bankInfo = [
+      `Account Name: ${bank.account_name || 'BARKAT MANAGEMENT SOLUTIONS LLP'}`,
+      `Bank Name: ${bank.bank_name || 'Please update bank details'}`,
+      `Branch: ${bank.branch || 'Please update branch details'}`,
+      `Account Number: ${bank.account_no || 'Please update account number'}`,
+      `IFSC Code: ${bank.ifsc_code || 'Please update IFSC code'}`
+    ]
+
+    bankInfo.forEach((info) => {
+      this.page.drawText(info, {
+        x: this.MARGIN,
+        y: this.layout.currentY,
+        size: 9,
+        font: this.fonts.regular,
+        color: this.COLORS.TEXT
+      })
+      this.layout.currentY -= 12
     })
   }
 

@@ -23,6 +23,7 @@ export interface MaintenanceLetter {
   generated_date?: string
   unit_number?: string
   owner_name?: string
+  contact_number?: string
   project_name?: string
   sector_code?: string
   unit_type?: string
@@ -69,8 +70,8 @@ class MaintenanceLetterService extends BasePDFGenerator {
   public getById(id: number): MaintenanceLetter | undefined {
     return dbService.get<MaintenanceLetter>(
       `
-      SELECT l.*, u.unit_number, u.owner_name, u.unit_type, u.sector_code, p.name as project_name,
-             p.account_name, p.bank_name, p.branch, p.branch_address,
+      SELECT l.*, u.unit_number, u.owner_name, u.contact_number, u.unit_type, u.sector_code, p.name as project_name,
+             p.account_name, p.bank_name, p.branch, p.branch_address, p.account_no, p.ifsc_code,
              p.qr_code_path as project_qr_code,
              pspc.qr_code_path as sector_qr_code,
              p.template_type,
