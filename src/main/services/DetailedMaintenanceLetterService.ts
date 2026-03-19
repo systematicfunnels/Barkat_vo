@@ -350,8 +350,8 @@ class DetailedMaintenanceLetterService {
     financialYear: string
   ): Promise<string> {
     const calculation = await this.generateDetailedLetter(projectId, unitId, financialYear)
-    const project = dbService.get<{ name: string; letterhead_path: string }>(
-      'SELECT name, letterhead_path FROM projects WHERE id = ?',
+    const project = dbService.get<{ name: string; letterhead_path: string; address?: string; city?: string; state?: string }>(
+      'SELECT name, letterhead_path, address, city, state FROM projects WHERE id = ?',
       [projectId]
     )
 
@@ -402,7 +402,8 @@ class DetailedMaintenanceLetterService {
     }
 
     // Header
-    page.drawText(project?.name?.toUpperCase() || 'MAINTENANCE LETTER', {
+    const projectName = project?.name || 'MAINTENANCE LETTER'
+    page.drawText(projectName.toUpperCase(), {
       x: 50,
       y: height - 50,
       size: 24,
@@ -410,7 +411,15 @@ class DetailedMaintenanceLetterService {
       color: rgb(1, 1, 1)
     })
 
-    page.drawText('RESIDENTIAL MAINTENANCE LETTER', {
+    // Build subtitle with project address if available
+    let subtitle = 'RESIDENTIAL MAINTENANCE LETTER'
+    if (project?.address) {
+      const cityState = [project.city, project.state].filter(Boolean).join(', ')
+      const fullAddress = cityState ? `${project.address}, ${cityState}` : project.address
+      subtitle = fullAddress.length > 60 ? fullAddress.substring(0, 57) + '...' : fullAddress
+    }
+    
+    page.drawText(subtitle, {
       x: 50,
       y: height - 80,
       size: 12,

@@ -51,9 +51,30 @@ export interface LetterAddOn {
 }
 
 class MaintenanceLetterService extends BasePDFGenerator {
-  protected readonly contactInfo = {
-    email: process.env.CONTACT_EMAIL || 'info@barkatmanagement.com',
-    phone: process.env.CONTACT_PHONE || '+91-XXXXXXXXXX'
+
+  /**
+   * Get project-specific contact information
+   */
+  private getProjectContactInfo(projectId: number): { email: string; phone: string } {
+    // Get project details for contact information
+    const project = dbService.get<{ 
+      name: string;
+      account_name?: string;
+    }>(
+      'SELECT name, account_name FROM projects WHERE id = ?',
+      [projectId]
+    )
+
+    // Use project name to create realistic email and use environment for phone
+    const projectName = project?.name || 'Society'
+    const emailDomain = projectName.toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .replace(/\s+/g, '') + 'chs.com'
+    
+    return {
+      email: process.env.CONTACT_EMAIL || `accounts@${emailDomain}`,
+      phone: process.env.CONTACT_PHONE || '+91-XXXXXXXXXX'
+    }
   }
 
   /**
@@ -84,14 +105,19 @@ class MaintenanceLetterService extends BasePDFGenerator {
     ].filter((path): path is string => Boolean(path))
     
     console.log('  Attempting paths:')
-    possiblePaths.forEach((p, i) => {
+    const foundPath = possiblePaths.find((p, i) => {
       const exists = fs.existsSync(p)
       console.log(`    ${i + 1}. ${p} - ${exists ? '✅ EXISTS' : '❌ NOT FOUND'}`)
       if (exists) {
         console.log('  ✅ Found QR code at:', p)
-        return p
+        return true
       }
+      return false
     })
+    
+    if (foundPath) {
+      return foundPath
+    }
     
     for (const possiblePath of possiblePaths) {
       if (fs.existsSync(possiblePath)) {
@@ -264,24 +290,8 @@ class MaintenanceLetterService extends BasePDFGenerator {
             }
           }
 
-          // Also add standard charges as add-ons for transparency if they are non-zero
-          const standardCharges = [
-            { name: 'N.A. Tax', amount: naTax },
-            { name: 'Solar Contribution', amount: solar },
-            { name: 'Cable Charges', amount: cable }
-          ]
-
-          for (const charge of standardCharges) {
-            if (charge.amount > 0) {
-              dbService.run(
-                `
-                INSERT INTO add_ons (letter_id, addon_name, addon_amount, remarks)
-                VALUES (?, ?, ?, ?)
-              `,
-                [letterId, charge.name, charge.amount, 'Standard project charge']
-              )
-            }
-          }
+          // Note: Standard charges (N.A. Tax, Solar, Cable) are already included in final_amount
+          // Don't add them as separate add-ons to prevent double counting
         }
 
         return createdLetters.length > 0
@@ -326,7 +336,7 @@ class MaintenanceLetterService extends BasePDFGenerator {
     await this.initializePDF()
 
     // Letterhead
-    this.drawLetterhead()
+    this.drawLetterhead(letter)
 
     // Letter details
     this.layout.currentY -= 20
@@ -354,15 +364,15 @@ class MaintenanceLetterService extends BasePDFGenerator {
     this.drawSectionHeader('Maintenance Demand Notice')
 
     // Amount details table
-    this.layout.currentY -= 10
+    this.layout.currentY -= 20
     this.drawAmountTable(letter, addOns)
 
     // Payment details
-    this.layout.currentY -= 30
+    this.layout.currentY -= 40
     this.drawPaymentDetails(letter)
 
     // Bank details
-    this.layout.currentY -= 30
+    this.layout.currentY -= 40
     await this.drawBankDetails(letter)
 
     // Footer
@@ -459,27 +469,113 @@ class MaintenanceLetterService extends BasePDFGenerator {
     })
   }
 
-  private drawLetterhead(): void {
-    // Company name and address
-    this.page.drawText('BARKAT MANAGEMENT SOLUTIONS LLP', {
+  /**
+   * Wrap text to fit within specified line length
+   */
+  private wrapText(text: string, maxLength: number): string[] {
+    if (text.length <= maxLength) {
+      return [text]
+    }
+
+    const words = text.split(' ')
+    const lines: string[] = []
+    let currentLine = ''
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).length <= maxLength) {
+        currentLine = currentLine ? currentLine + ' ' + word : word
+      } else {
+        if (currentLine) {
+          lines.push(currentLine)
+          currentLine = word
+        } else {
+          // Word is longer than max length, split it
+          for (let i = 0; i < word.length; i += maxLength) {
+            lines.push(word.substring(i, i + maxLength))
+          }
+        }
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine)
+    }
+
+    return lines
+  }
+
+  private drawLetterhead(letter: MaintenanceLetter): void {
+    // Get project details for dynamic heading
+    const project = dbService.get<{ 
+      name: string; 
+      address?: string; 
+      city?: string; 
+      state?: string;
+    }>(
+      'SELECT name, address, city, state FROM projects WHERE id = ?',
+      [letter.project_id]
+    )
+
+    // Society name with period and sectors (like your sample)
+    const societyName = project?.name || 'Society'
+    const financialYear = letter.financial_year
+    const [startYear, endYear] = financialYear.split('-')
+    const period = `${this.getMonthName(startYear)} ${startYear} – ${this.getMonthName(endYear)} ${endYear}`
+    
+    this.page.drawText(societyName.toUpperCase(), {
       x: this.MARGIN,
       y: this.layout.currentY,
-      size: 16,
+      size: 18,
       font: this.fonts.bold,
       color: this.COLORS.PRIMARY
     })
 
     this.layout.currentY -= 20
-    this.page.drawText('Property Management & Maintenance Services', {
+    
+    // Period information (like your sample)
+    this.page.drawText(`This is a Maintenance Letter for the period of ${period}`, {
       x: this.MARGIN,
       y: this.layout.currentY,
-      size: 10,
+      size: 12,
       font: this.fonts.regular,
-      color: this.COLORS.GRAY
+      color: this.COLORS.TEXT
     })
 
-    this.layout.currentY -= 15
-    this.page.drawText(`Email: ${this.contactInfo.email} | Phone: ${this.contactInfo.phone}`, {
+    this.layout.currentY -= 20
+    
+    // Site address
+    if (project?.address) {
+      const cityState = [project.city, project.state].filter(Boolean).join(', ')
+      const fullAddress = cityState ? `${project.address}, ${cityState}` : project.address
+      
+      // Split long address into multiple lines
+      const maxLineLength = 60
+      const addressLines = this.wrapText(fullAddress, maxLineLength)
+      
+      addressLines.forEach((line) => {
+        this.page.drawText(line, {
+          x: this.MARGIN,
+          y: this.layout.currentY,
+          size: 10,
+          font: this.fonts.regular,
+          color: this.COLORS.TEXT
+        })
+        this.layout.currentY -= 12
+      })
+    } else {
+      this.page.drawText('Property Management & Maintenance Services', {
+        x: this.MARGIN,
+        y: this.layout.currentY,
+        size: 10,
+        font: this.fonts.regular,
+        color: this.COLORS.GRAY
+      })
+      this.layout.currentY -= 12
+    }
+
+    this.layout.currentY -= 10
+    const contactInfo = this.getProjectContactInfo(letter.project_id)
+    this.page.drawText(`Email: ${contactInfo.email} | Phone: ${contactInfo.phone}`, {
       x: this.MARGIN,
       y: this.layout.currentY,
       size: 9,
@@ -490,55 +586,140 @@ class MaintenanceLetterService extends BasePDFGenerator {
     this.drawDivider()
   }
 
-  private drawRecipientSection(letter: MaintenanceLetter): void {
-    // Recipient details in a proper format
-    const recipientLines = [
-      `To,`,
-      `${letter.owner_name || 'N/A'}`,
-      `${letter.unit_number || 'N/A'}`,
-      `${letter.project_name || 'N/A'}`
-    ]
+  /**
+   * Get month name from financial year month
+   */
+  private getMonthName(month: string): string {
+    const months: { [key: string]: string } = {
+      '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+      '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+      '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+    }
+    return months[month] || 'April'
+  }
 
-    recipientLines.forEach((line, index) => {
-      this.page.drawText(line, {
-        x: this.MARGIN,
-        y: this.layout.currentY - index * 12,
-        size: index === 0 ? 10 : 9,
-        font: index === 0 ? this.fonts.bold : this.fonts.regular,
-        color: this.COLORS.TEXT
-      })
+  private drawRecipientSection(letter: MaintenanceLetter): void {
+    // Get unit details with more information
+    const unit = dbService.get<{
+      unit_number: string;
+      owner_name: string;
+      contact_number?: string;
+      email?: string;
+      area_sqft?: number;
+      sector_code?: string;
+    }>(
+      'SELECT unit_number, owner_name, contact_number, email, area_sqft, sector_code FROM units WHERE id = ?',
+      [letter.unit_id]
+    )
+
+    // Format like your sample: "The letter is addressed to [Owners] for plot [Unit]"
+    const owners = letter.owner_name || unit?.owner_name || 'N/A'
+    const plotNumber = letter.unit_number || unit?.unit_number || 'N/A'
+    const sector = unit?.sector_code ? `Sector "${unit.sector_code}"` : ''
+    
+    this.page.drawText(`The letter is addressed to ${owners} for plot ${plotNumber}${sector ? ` from ${sector}` : ''}.`, {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 11,
+      font: this.fonts.regular,
+      color: this.COLORS.TEXT
     })
 
-    this.layout.currentY -= recipientLines.length * 12 + 20
+    this.layout.currentY -= 25
+    
+    // Add plot area information
+    const plotArea = unit?.area_sqft || 0
+    this.page.drawText(`Payment Breakdown`, {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 12,
+      font: this.fonts.bold,
+      color: this.COLORS.PRIMARY
+    })
+
+    this.layout.currentY -= 20
+    this.page.drawText(`The maintenance fees are calculated based on a plot area of ${plotArea.toLocaleString()} Sqft.`, {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 10,
+      font: this.fonts.regular,
+      color: this.COLORS.TEXT
+    })
+
+    this.layout.currentY -= 35
   }
 
   private drawAmountTable(letter: MaintenanceLetter, addOns: LetterAddOn[]): void {
-    // Create amount breakdown table
-    const headers = ['Particulars', 'Amount (Rs.)']
-    const rows = [['Maintenance Charges', this.formatCurrency(letter.base_amount)]]
+    // Get maintenance rate for this financial year
+    const rate = dbService.get<{ rate_per_sqft: number }>(
+      'SELECT rate_per_sqft FROM maintenance_rates WHERE project_id = ? AND financial_year = ?',
+      [letter.project_id, letter.financial_year]
+    )
 
-    // Add add-ons if any
+    // Get project charges configuration
+    const chargesConfig = projectService.getChargesConfig(letter.project_id)
+
+    // Enhanced billing table matching your sample format
+    const headers = ['Particulars', 'Amount', 'Before 30th June 2025', 'After 30th June 2025']
+    const rows: string[][] = []
+
+    // Base maintenance charges with plot details
+    const ratePerSqft = rate?.rate_per_sqft || 0
+    const discountPercentage = chargesConfig.early_payment_discount_percentage || 10
+    
+    // Use stored base_amount, don't recalculate
+    const maintenanceAmount = letter.base_amount
+    const maintenanceAfterDiscount = maintenanceAmount - (maintenanceAmount * discountPercentage / 100)
+    
+    rows.push([
+      `Current Maintenance (at Rs. ${ratePerSqft.toFixed(2)}/sqft)`,
+      this.formatCurrency(maintenanceAmount),
+      this.formatCurrency(maintenanceAfterDiscount),
+      this.formatCurrency(maintenanceAmount)
+    ])
+
+    // Only add add-ons from database (don't recalculate standard charges)
+    // This prevents double counting
     addOns.forEach((addon) => {
-      rows.push([addon.addon_name, this.formatCurrency(addon.addon_amount)])
+      rows.push([
+        addon.addon_name,
+        this.formatCurrency(addon.addon_amount),
+        this.formatCurrency(addon.addon_amount),
+        this.formatCurrency(addon.addon_amount)
+      ])
     })
 
-    // Add discount if applicable
-    if (letter.discount_amount > 0) {
-      rows.push(['Discount', `(${this.formatCurrency(letter.discount_amount)})`])
-    }
-
-    // Add arrears if applicable
+    // Add arrears if applicable (use stored value)
     if (letter.arrears && letter.arrears > 0) {
-      rows.push(['Arrears', this.formatCurrency(letter.arrears)])
+      rows.push([
+        'Previous Arrears',
+        this.formatCurrency(letter.arrears),
+        this.formatCurrency(letter.arrears),
+        this.formatCurrency(letter.arrears)
+      ])
     }
 
-    // Total
-    rows.push(['Total Amount Due', this.formatCurrency(letter.final_amount)])
+    // Calculate totals using stored final_amount
+    const totalFromAddOns = addOns.reduce((sum, addon) => sum + addon.addon_amount, 0)
+    const arrearsAmount = letter.arrears || 0
+    const totalBeforeDiscount = maintenanceAmount + totalFromAddOns + arrearsAmount
+    const totalAfterDiscount = maintenanceAfterDiscount + totalFromAddOns + arrearsAmount
+
+    // Total row
+    rows.push([
+      'Total Amount Payable',
+      '',
+      this.formatCurrency(totalBeforeDiscount),
+      this.formatCurrency(totalAfterDiscount)
+    ])
 
     this.drawTable(headers, rows)
   }
 
   private drawPaymentDetails(letter: MaintenanceLetter): void {
+    // Get project charges configuration for discount/penalty calculations
+    const chargesConfig = projectService.getChargesConfig(letter.project_id)
+    
     this.page.drawText('Payment Details:', {
       x: this.MARGIN,
       y: this.layout.currentY,
@@ -552,57 +733,78 @@ class MaintenanceLetterService extends BasePDFGenerator {
     const paymentInfo = [
       `Due Date: ${this.formatDate(letter.due_date || '')}`,
       `Payment Mode: Cheque/Cash/Online Transfer`,
-      `Late Payment Charges: 21% per annum`
+      `Late Payment Charges: ${chargesConfig.penalty_percentage || 21}% per annum`
     ]
 
     paymentInfo.forEach((info, index) => {
       this.page.drawText(info, {
         x: this.MARGIN,
-        y: this.layout.currentY - index * 12,
+        y: this.layout.currentY - index * 15,
         size: 9,
         font: this.fonts.regular,
         color: this.COLORS.TEXT
       })
     })
 
-    this.layout.currentY -= paymentInfo.length * 12 + 20
+    this.layout.currentY -= (paymentInfo.length * 15) + 25
   }
 
   private async drawBankDetails(letter: MaintenanceLetter): Promise<void> {
-    this.page.drawText('Bank Details for Payment:', {
+    this.page.drawText('------------------------------', {
       x: this.MARGIN,
       y: this.layout.currentY,
       size: 10,
+      font: this.fonts.regular,
+      color: this.COLORS.TEXT
+    })
+
+    this.layout.currentY -= 20
+
+    this.page.drawText('New Bank Details for Payment', {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 12,
       font: this.fonts.bold,
       color: this.COLORS.PRIMARY
     })
 
     this.layout.currentY -= 20
 
+    this.page.drawText('The society has updated its banking information. Please ensure payments are made to the following account:', {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 10,
+      font: this.fonts.regular,
+      color: this.COLORS.TEXT
+    })
+
+    this.layout.currentY -= 25
+
     const bankInfo = [
-      `Account Name: ${letter.account_name || 'BARKAT MANAGEMENT SOLUTIONS LLP'}`,
-      `Bank Name: ${letter.bank_name || 'Please update bank details'}`,
-      `Branch: ${letter.branch || 'Please update branch details'}`,
-      `Account Number: ${letter.account_no || 'Please update account number'}`,
-      `IFSC Code: ${letter.ifsc_code || 'Please update IFSC code'}`
+      `* Account Name: ${letter.account_name || 'Please update account name'}`,
+      `* Account No: ${letter.account_no || 'Please update account number'}`,
+      `* Bank Name: ${letter.bank_name || 'Please update bank name'}`,
+      `* IFSC Code: ${letter.ifsc_code || 'Please update IFSC code'}`,
+      `* Branch: ${letter.branch || 'Please update branch details'}`
     ]
 
     bankInfo.forEach((info, index) => {
       this.page.drawText(info, {
         x: this.MARGIN,
-        y: this.layout.currentY - index * 12,
-        size: 9,
+        y: this.layout.currentY - index * 18,
+        size: 10,
         font: this.fonts.regular,
         color: this.COLORS.TEXT
       })
     })
+
+    this.layout.currentY -= (bankInfo.length * 18) + 30
 
     // Add QR code based on template type
     const qrCodePath =
       letter.template_type === 'sector_legacy' ? letter.sector_qr_code : letter.project_qr_code
 
     if (qrCodePath) {
-      this.layout.currentY -= bankInfo.length * 12 + 30
       const qrLabel =
         letter.template_type === 'sector_legacy'
           ? `Scan QR Code for Sector ${letter.sector_code} Payment:`
@@ -694,7 +896,16 @@ class MaintenanceLetterService extends BasePDFGenerator {
       }
     }
 
-    this.layout.currentY -= bankInfo.length * 12 + 20
+    this.layout.currentY -= 20
+
+    // Add penalty question like your sample
+    this.page.drawText('Would you like me to calculate the penalty amount if payment is made significantly after the June deadline?', {
+      x: this.MARGIN,
+      y: this.layout.currentY,
+      size: 10,
+      font: this.fonts.italic,
+      color: this.COLORS.SECONDARY
+    })
   }
 }
 
