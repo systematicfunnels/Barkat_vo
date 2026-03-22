@@ -441,19 +441,19 @@ export abstract class BasePDFGenerator {
   /**
    * Save PDF with standardized naming
    */
-  protected savePDF(fileName: string, directory?: string): string {
-    const pdfBytes = this.pdfDoc.save()
+  protected async savePDF(fileName: string, directory?: string): Promise<string> {
+    const pdfBytes = await this.pdfDoc.save()
     const fs = require('fs')
     const path = require('path')
     const app = require('electron').app
 
     const targetDir = directory || path.join(app.getPath('userData'), 'pdfs')
     if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true })
+      await fs.promises.mkdir(targetDir, { recursive: true })
     }
 
     const fullPath = path.join(targetDir, fileName)
-    fs.writeFileSync(fullPath, pdfBytes)
+    await fs.promises.writeFile(fullPath, pdfBytes)
     return fullPath
   }
 }

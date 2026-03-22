@@ -19,6 +19,7 @@ export interface Project {
   branch_address?: string
   qr_code_path?: string
   template_type?: string
+  payment_modes?: string
   import_profile_key?: string
   created_at?: string
   unit_count?: number
@@ -276,8 +277,8 @@ class ProjectService {
   public create(project: Project): number {
     const result = dbService.run(
       `INSERT INTO projects (
-        project_code, name, address, city, state, pincode, status, letterhead_path, account_name, bank_name, account_no, ifsc_code, branch, branch_address, qr_code_path, template_type, import_profile_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        project_code, name, address, city, state, pincode, status, letterhead_path, account_name, bank_name, account_no, ifsc_code, branch, branch_address, qr_code_path, template_type, payment_modes, import_profile_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         this.sanitizeText(project.project_code).toUpperCase() || this.generateNextProjectCode(),
         project.name,
@@ -295,6 +296,7 @@ class ProjectService {
         project.branch_address,
         project.qr_code_path,
         project.template_type || 'standard',
+        project.payment_modes || 'Cheque/Cash/Online Transfer',
         project.import_profile_key
       ]
     )
@@ -318,6 +320,7 @@ class ProjectService {
       'branch_address',
       'qr_code_path',
       'template_type',
+      'payment_modes',
       'import_profile_key'
     ]
     const keys = Object.keys(project).filter(
@@ -574,6 +577,20 @@ class ProjectService {
       penalty_percentage: 21,
       early_payment_discount_percentage: 10
     }
+  }
+
+  /**
+   * Validate that all unit IDs belong to the specified project
+   */
+  public validateUnitsInProject(unitIds: number[], projectId: number): boolean {
+    if (unitIds.length === 0) return false
+    
+    const validUnits = dbService.query<{ id: number }>(
+      `SELECT id FROM units WHERE id IN (${unitIds.map(() => '?').join(',')}) AND project_id = ?`,
+      [...unitIds, projectId]
+    )
+    
+    return validUnits.length === unitIds.length
   }
 
   public saveChargesConfig(config: ProjectChargesConfig): boolean {

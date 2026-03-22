@@ -4,6 +4,10 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { projectService } from './ProjectService'
+import { getFYDeadline } from '../utils/dateUtils'
+import { Logger } from '../utils/logger'
+
+const logger = Logger.getInstance()
 
 export interface DetailedMaintenanceLetter {
   id?: number
@@ -70,6 +74,7 @@ export interface LetterCalculation {
     early_payment_discount: number
     amount_payable_before_due: number
     amount_payable_after_due: number
+    penalty_percentage: number
   }
   bank_details: {
     name: string
@@ -83,14 +88,6 @@ export interface LetterCalculation {
 }
 
 class DetailedMaintenanceLetterService {
-  private sanitizeFileNamePart(value: string): string {
-    const sanitized = value
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
-      .trim()
-      .replace(/\s+/g, '_')
-    return sanitized || 'UNKNOWN'
-  }
-
   private calculateArrearsWithPenalty(
     projectId: number,
     unitId: number,
@@ -182,7 +179,7 @@ class DetailedMaintenanceLetterService {
     }
   }
 
-  private getUnitDetails(projectId: number, unitId: number): any {
+  private getUnitDetails(projectId: number, unitId: number, financialYear: string): any {
     const unit = dbService.get<{
       unit_number: string
       owner_name: string
@@ -196,20 +193,18 @@ class DetailedMaintenanceLetterService {
 
     // Get rate for current year
     const rate = dbService.get<{ rate_per_sqft: number }>(
-      `SELECT r.rate_per_sqft 
-       FROM maintenance_rates r
-       JOIN maintenance_letters l ON r.project_id = l.project_id AND r.financial_year = l.financial_year
-       WHERE l.project_id = ? AND l.unit_id = ? AND l.financial_year = (
-         SELECT MAX(financial_year) FROM maintenance_letters WHERE project_id = ? AND unit_id = ?
-       )`,
-      [projectId, unitId, projectId, unitId]
+      `SELECT rate_per_sqft 
+       FROM maintenance_rates 
+       WHERE project_id = ? AND financial_year = ?`,
+      [projectId, financialYear]
     )
 
     return {
       unit_number: unit?.unit_number || '',
       owner_name: unit?.owner_name || '',
       plot_area: unit?.area_sqft || 0,
-      rate_per_sqft: rate?.rate_per_sqft || 0
+      rate_per_sqft: rate?.rate_per_sqft || 0,
+      sector_code: unit?.sector_code
     }
   }
 
@@ -274,7 +269,7 @@ class DetailedMaintenanceLetterService {
     unitId: number,
     financialYear: string
   ): Promise<LetterCalculation> {
-    const unitDetails = this.getUnitDetails(projectId, unitId)
+    const unitDetails = this.getUnitDetails(projectId, unitId, financialYear)
     const arrears_breakdown = this.calculateArrearsWithPenalty(projectId, unitId, financialYear)
     const current_year_charges = this.calculateCurrentYearCharges(projectId, unitId, financialYear)
 
@@ -338,7 +333,8 @@ class DetailedMaintenanceLetterService {
         grand_total_before_discount,
         early_payment_discount,
         amount_payable_before_due,
-        amount_payable_after_due
+        amount_payable_after_due,
+        penalty_percentage: chargesConfig.penalty_percentage
       },
       bank_details
     }
@@ -364,13 +360,12 @@ class DetailedMaintenanceLetterService {
     // Add letterhead if available
     const letterheadPath = project?.letterhead_path ? path.resolve(project.letterhead_path) : ''
     const letterheadExt = path.extname(letterheadPath).toLowerCase()
-    const hasSupportedLetterhead =
-      (letterheadExt === '.png' || letterheadExt === '.jpg' || letterheadExt === '.jpeg') &&
-      fs.existsSync(letterheadPath)
+    const isSupportedLetterhead =
+      letterheadExt === '.png' || letterheadExt === '.jpg' || letterheadExt === '.jpeg'
 
-    if (hasSupportedLetterhead) {
+    if (isSupportedLetterhead && letterheadPath) {
       try {
-        const letterheadBytes = fs.readFileSync(letterheadPath)
+        const letterheadBytes = await fs.promises.readFile(letterheadPath)
         const letterheadImage =
           letterheadExt === '.png'
             ? await pdfDoc.embedPng(letterheadBytes)
@@ -496,7 +491,7 @@ class DetailedMaintenanceLetterService {
       font: boldFont,
       color: rgb(1, 1, 1)
     })
-    page.drawText('21%', {
+    page.drawText(`${calculation.totals.penalty_percentage}%`, {
       x: tableX + 400,
       y: currentY + 20,
       size: 10,
@@ -602,7 +597,10 @@ class DetailedMaintenanceLetterService {
     })
     currentY -= 20
 
-    page.drawText('Amount Payable before 30th June', {
+    // Extract deadline date
+    const deadlineDate = getFYDeadline(financialYear)
+
+    page.drawText(`Amount Payable before ${deadlineDate}`, {
       x: tableX + 10,
       y: currentY,
       size: 12,
@@ -616,7 +614,7 @@ class DetailedMaintenanceLetterService {
     })
 
     currentY -= 20
-    page.drawText('Amount Payable after 30th June', {
+    page.drawText(`Amount Payable after ${deadlineDate}`, {
       x: tableX + 10,
       y: currentY,
       size: 12,
@@ -689,10 +687,10 @@ class DetailedMaintenanceLetterService {
       : ''
     const qrExt = path.extname(qrPath).toLowerCase()
     const isSupportedQrImage = qrExt === '.png' || qrExt === '.jpg' || qrExt === '.jpeg'
-    if (qrPath && isSupportedQrImage && fs.existsSync(qrPath)) {
-      try {
-        const qrImageBytes = fs.readFileSync(qrPath)
-        const qrImage =
+    if (qrPath && isSupportedQrImage) {
+        try {
+          const qrImageBytes = await fs.promises.readFile(qrPath)
+          const qrImage =
           qrExt === '.png'
             ? await pdfDoc.embedPng(qrImageBytes)
             : await pdfDoc.embedJpg(qrImageBytes)
@@ -709,20 +707,17 @@ class DetailedMaintenanceLetterService {
           font: boldFont
         })
       } catch (error) {
-        console.error('Error embedding QR image:', error)
+        logger.error('Error embedding QR image', error as Error)
       }
     }
 
     const pdfBytes = await pdfDoc.save()
-    const pdfDir = path.join(app.getPath('userData'), 'maintenance_letters')
-    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true })
+    const pdfDir = path.join(app.getPath('userData'), 'maintenance-letters-detailed')
+    await fs.promises.mkdir(pdfDir, { recursive: true })
 
-    const safeUnitNumber = this.sanitizeFileNamePart(
-      calculation.unit_details.unit_number || 'UNKNOWN'
-    )
-    const fileName = `Detailed_ML_${projectId}_${safeUnitNumber}_${financialYear}.pdf`
+    const fileName = `Detailed_Letter_${unitId}_${financialYear}.pdf`
     const filePath = path.join(pdfDir, fileName)
-    fs.writeFileSync(filePath, pdfBytes)
+    await fs.promises.writeFile(filePath, pdfBytes)
 
     return filePath
   }

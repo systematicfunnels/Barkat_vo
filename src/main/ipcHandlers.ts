@@ -403,8 +403,19 @@ export function registerIpcHandlers(): void {
     }
   )
 
+  const validatePath = (filePath: string): void => {
+    if (!filePath) return
+    const userDataPath = app.getPath('userData')
+    if (!filePath.startsWith(userDataPath)) {
+      throw new Error('Access denied: Path is outside of application data directory.')
+    }
+  }
+
   ipcMain.handle('open-pdf', (_, filePath: string): void => {
-    shell.openPath(filePath)
+    validatePath(filePath)
+    if (filePath && filePath.endsWith('.pdf')) {
+      shell.openPath(filePath)
+    }
   })
 
   ipcMain.handle(
@@ -416,17 +427,29 @@ export function registerIpcHandlers(): void {
         filters?: { name: string; extensions: string[] }[]
       }
     ): Promise<string | null> => {
-      const result = await dialog.showOpenDialog({
-        title: sanitizeText(options?.title) || 'Select File',
-        properties: ['openFile'],
-        filters: Array.isArray(options?.filters) ? options.filters : undefined
-      })
+      console.log('🔍 [select-local-file] IPC handler called with options:', options)
+      
+      try {
+        // Use dialog without parent window - simpler approach
+        const result = await dialog.showOpenDialog({
+          title: sanitizeText(options?.title) || 'Select File',
+          properties: ['openFile'],
+          filters: Array.isArray(options?.filters) ? options.filters : undefined
+        })
+        
+        console.log('🔍 [select-local-file] Dialog result:', result)
 
-      if (result.canceled || result.filePaths.length === 0) {
-        return null
+        if (result.canceled || result.filePaths.length === 0) {
+          console.log('🔍 [select-local-file] User cancelled or no file selected')
+          return null
+        }
+
+        console.log('🔍 [select-local-file] Returning file path:', result.filePaths[0])
+        return result.filePaths[0]
+      } catch (error) {
+        console.error('❌ [select-local-file] Dialog error:', error)
+        throw error
       }
-
-      return result.filePaths[0]
     }
   )
 
@@ -555,8 +578,9 @@ export function registerIpcHandlers(): void {
   })
 
   // Shell
-  ipcMain.handle('show-item-in-folder', (_, path: string): void => {
-    shell.showItemInFolder(path)
+  ipcMain.handle('show-item-in-folder', (_, filePath: string): void => {
+    validatePath(filePath)
+    shell.showItemInFolder(filePath)
   })
 
   // Database Repair
@@ -750,8 +774,8 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('list-backups', () => {
-    return backupService.listBackups()
+  ipcMain.handle('list-backups', async () => {
+    return await backupService.listBackups()
   })
 
   ipcMain.handle('start-auto-backup', (_, intervalDays: number = 7) => {
@@ -895,17 +919,30 @@ export function registerIpcHandlers(): void {
         throw new Error('Source and target paths are required')
       }
       
-      // Resolve paths relative to user data directory
-      const userDataPath = app.getPath('userData')
+      // Validate source path - must be absolute and exist
       const resolvedSourcePath = path.resolve(sourcePath)
-      const resolvedTargetPath = path.join(userDataPath, targetPath)
-      
-      // Check if source file exists
       if (!fs.existsSync(resolvedSourcePath)) {
         throw new Error(`Source file not found: ${resolvedSourcePath}`)
       }
       
-      // Create target directory if it doesn't exist
+      // Validate source file is an image
+      const sourceExt = path.extname(resolvedSourcePath).toLowerCase()
+      if (!['.png', '.jpg', '.jpeg'].includes(sourceExt)) {
+        throw new Error(`Unsupported file format. Please select an image file (PNG, JPG, JPEG).`)
+      }
+      
+      // Validate source file size (max 5MB)
+      const stats = fs.statSync(resolvedSourcePath)
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (stats.size > maxSize) {
+        throw new Error(`File size too large. Maximum allowed size is 5MB.`)
+      }
+      
+      // Resolve target path relative to user data directory
+      const userDataPath = app.getPath('userData')
+      const resolvedTargetPath = path.join(userDataPath, targetPath)
+      
+      // Ensure target directory exists
       const targetDir = path.dirname(resolvedTargetPath)
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true })
@@ -914,10 +951,24 @@ export function registerIpcHandlers(): void {
       // Copy the file
       fs.copyFileSync(resolvedSourcePath, resolvedTargetPath)
       
-      return { success: true, targetPath: targetPath }
+      // Verify copy was successful
+      if (!fs.existsSync(resolvedTargetPath)) {
+        throw new Error('File copy failed - target file not created')
+      }
+      
+      return { 
+        success: true, 
+        targetPath: targetPath,
+        sourcePath: resolvedSourcePath,
+        size: stats.size
+      }
     } catch (error) {
       console.error('Failed to copy asset file:', error)
-      return { success: false, error: error instanceof Error ? error.message : String(error) }
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return { 
+        success: false, 
+        error: errorMessage 
+      }
     }
   })
 
@@ -937,21 +988,38 @@ export function registerIpcHandlers(): void {
       // Check if file exists
       const exists = fs.existsSync(resolvedPath)
       
+      if (!exists) {
+        return { 
+          exists: false, 
+          isValidImage: false, 
+          path: resolvedPath,
+          error: 'File does not exist'
+        }
+      }
+      
       // Check if it's a valid image file
-      const isValidImage = exists ? ['.png', '.jpg', '.jpeg'].includes(path.extname(resolvedPath).toLowerCase()) : false
+      const ext = path.extname(resolvedPath).toLowerCase()
+      const isValidImage = ['.png', '.jpg', '.jpeg'].includes(ext)
+      
+      // Get file stats
+      const stats = fs.statSync(resolvedPath)
       
       return { 
         exists, 
         isValidImage, 
-        path: resolvedPath 
+        path: resolvedPath,
+        size: stats.size,
+        extension: ext,
+        lastModified: stats.mtime
       }
     } catch (error) {
       console.error('Failed to validate asset file:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
       return { 
         exists: false, 
         isValidImage: false, 
         path: assetPath,
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage
       }
     }
   })

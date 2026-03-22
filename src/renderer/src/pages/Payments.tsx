@@ -143,8 +143,12 @@ const Payments: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    // Handle navigation shortcuts from Units page
-    const state = location.state as { unitId?: number } | null
+    // Handle navigation shortcuts from Units or Billing page
+    const state = location.state as { 
+      unitId?: number; 
+      letterId?: number; 
+      financialYear?: string 
+    } | null
     if (!state?.unitId) return
     if (units.length === 0) return
 
@@ -153,7 +157,11 @@ const Payments: React.FC = () => {
       form.resetFields()
       form.setFieldsValue({
         unit_id: foundUnit.id,
-        project_id: foundUnit.project_id
+        project_id: foundUnit.project_id,
+        letter_id: state.letterId,
+        financial_year: state.financialYear || defaultFY,
+        payment_date: dayjs(),
+        payment_mode: 'Transfer'
       })
       setIsModalOpen(true)
     }
@@ -350,14 +358,7 @@ const Payments: React.FC = () => {
       // Use batch service for efficient bulk payment creation
       console.log('🔄 Starting bulk payment creation for:', validPayments.length, 'payments')
       const result = await window.api.batch.createPayments(validPayments)
-      console.log('📊 Bulk payment result:', result)
       
-      if (result.failed > 0) {
-        message.warning(`${result.successful} payments recorded, ${result.failed} failed`)
-      } else {
-        message.success(`Successfully recorded ${result.successful} payments`)
-      }
-
       // Generate receipts for successful payments only
       const successfulIds = result.results
         .filter(r => r.paymentId)
@@ -367,9 +368,9 @@ const Payments: React.FC = () => {
         // Show next step guidance using utility
         showCompletionWithNextStep(
           'payments',
-          'Payments recorded',
+          'Payments recorded successfully',
           navigate,
-          `${result.successful} payments recorded`
+          `${result.successful} payments recorded. Receipt generation started in background.`
         )
 
         setGeneratingReceipts(true)
@@ -447,6 +448,13 @@ const Payments: React.FC = () => {
             await window.api.payments.create(normalizedPaymentData)
             setIsModalOpen(false)
             fetchData()
+
+            showCompletionWithNextStep(
+              'payments',
+              'Payment recorded successfully',
+              navigate,
+              `Payment of ₹${values.payment_amount.toLocaleString()} has been added`
+            )
           }
         })
         return
@@ -455,6 +463,13 @@ const Payments: React.FC = () => {
       await window.api.payments.create(normalizedPaymentData)
       setIsModalOpen(false)
       fetchData()
+
+      showCompletionWithNextStep(
+        'payments',
+        'Payment recorded successfully',
+        navigate,
+        `Payment of ₹${values.payment_amount.toLocaleString()} has been added`
+      )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       message.error(`Failed to record payment: ${errorMessage}`)

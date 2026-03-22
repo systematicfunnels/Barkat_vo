@@ -83,9 +83,6 @@ class MaintenanceLetterService extends BasePDFGenerator {
   private resolveQrCodePath(qrCodePath: string): string | null {
     if (!qrCodePath) return null
     
-    console.log('🔍 QR Code Path Resolution Debug:')
-    console.log('  Input path:', qrCodePath)
-    
     // Try multiple possible locations
     const possiblePaths = [
       // Original path (absolute)
@@ -104,16 +101,7 @@ class MaintenanceLetterService extends BasePDFGenerator {
         : null
     ].filter((path): path is string => Boolean(path))
     
-    console.log('  Attempting paths:')
-    const foundPath = possiblePaths.find((p, i) => {
-      const exists = fs.existsSync(p)
-      console.log(`    ${i + 1}. ${p} - ${exists ? '✅ EXISTS' : '❌ NOT FOUND'}`)
-      if (exists) {
-        console.log('  ✅ Found QR code at:', p)
-        return true
-      }
-      return false
-    })
+    const foundPath = possiblePaths.find((p) => fs.existsSync(p))
     
     if (foundPath) {
       return foundPath
@@ -125,7 +113,6 @@ class MaintenanceLetterService extends BasePDFGenerator {
       }
     }
     
-    console.log('  ❌ QR code not found in any location')
     return null
   }
 
@@ -172,8 +159,21 @@ class MaintenanceLetterService extends BasePDFGenerator {
       try {
         const createdLetters: number[] = []
         const chargesConfig = projectService.getChargesConfig(projectId)
+        const skippedUnits: number[] = []
 
         for (const unitId of unitIds) {
+          // Check if letter already exists for this unit and financial year
+          const existingLetter = dbService.get<{ id: number }>(
+            'SELECT id FROM maintenance_letters WHERE unit_id = ? AND financial_year = ?',
+            [unitId, financialYear]
+          )
+
+          if (existingLetter) {
+            skippedUnits.push(unitId)
+            console.warn(`Skipping unit ${unitId}: Maintenance letter already exists for financial year ${financialYear}`)
+            continue
+          }
+
           // Get unit details for calculation
           const unit = dbService.get<{ area_sqft: number; unit_type: string }>(
             'SELECT area_sqft, unit_type FROM units WHERE id = ?',
@@ -292,6 +292,13 @@ class MaintenanceLetterService extends BasePDFGenerator {
 
           // Note: Standard charges (N.A. Tax, Solar, Cable) are already included in final_amount
           // Don't add them as separate add-ons to prevent double counting
+        }
+
+        // Log summary
+        if (skippedUnits.length > 0) {
+          console.log(`Created ${createdLetters.length} letters, skipped ${skippedUnits.length} units (already exist)`)
+        } else {
+          console.log(`Successfully created ${createdLetters.length} maintenance letters`)
         }
 
         return createdLetters.length > 0
@@ -730,10 +737,12 @@ class MaintenanceLetterService extends BasePDFGenerator {
 
     this.layout.currentY -= 20
 
+    // Get payment modes from project settings (dynamic)
+    const paymentModes = this.getPaymentModes(letter.project_id)
     const paymentInfo = [
       `Due Date: ${this.formatDate(letter.due_date || '')}`,
-      `Payment Mode: Cheque/Cash/Online Transfer`,
-      `Late Payment Charges: ${chargesConfig.penalty_percentage || 21}% per annum`
+      `Payment Mode: ${paymentModes}`,
+      `Late Payment Charges: ${chargesConfig.penalty_percentage || 0}% per annum`
     ]
 
     paymentInfo.forEach((info, index) => {
@@ -747,6 +756,34 @@ class MaintenanceLetterService extends BasePDFGenerator {
     })
 
     this.layout.currentY -= (paymentInfo.length * 15) + 25
+  }
+
+  /**
+   * Get payment modes from project settings (dynamic from database)
+   */
+  private getPaymentModes(projectId: number): string {
+    // Try to get payment modes from project settings
+    const projectSettings = dbService.get<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      [`project_${projectId}_payment_modes`]
+    )
+
+    if (projectSettings && projectSettings.value) {
+      return projectSettings.value
+    }
+
+    // Try to get from project table if available
+    const project = dbService.get<{ payment_modes?: string }>(
+      'SELECT payment_modes FROM projects WHERE id = ?',
+      [projectId]
+    )
+
+    if (project?.payment_modes) {
+      return project.payment_modes
+    }
+
+    // Fallback to default modes (but still dynamic - not hardcoded in PDF generation)
+    return 'Cheque/Cash/Online Transfer'
   }
 
   private async drawBankDetails(letter: MaintenanceLetter): Promise<void> {
@@ -770,14 +807,6 @@ class MaintenanceLetterService extends BasePDFGenerator {
 
     this.layout.currentY -= 20
 
-    this.page.drawText('The society has updated its banking information. Please ensure payments are made to the following account:', {
-      x: this.MARGIN,
-      y: this.layout.currentY,
-      size: 10,
-      font: this.fonts.regular,
-      color: this.COLORS.TEXT
-    })
-
     this.layout.currentY -= 25
 
     const bankInfo = [
@@ -791,16 +820,19 @@ class MaintenanceLetterService extends BasePDFGenerator {
     bankInfo.forEach((info, index) => {
       this.page.drawText(info, {
         x: this.MARGIN,
-        y: this.layout.currentY - index * 18,
+        y: this.layout.currentY - index * 22, // Increased spacing from 18
         size: 10,
         font: this.fonts.regular,
         color: this.COLORS.TEXT
       })
     })
 
-    this.layout.currentY -= (bankInfo.length * 18) + 30
+    // Calculate bank details height dynamically for proper QR code positioning
+    const bankDetailsHeight = bankInfo.length * 22 + 40 // Dynamic calculation with padding
 
-    // Add QR code based on template type
+    this.layout.currentY -= bankDetailsHeight
+
+    // Add QR code based on template type with improved positioning
     const qrCodePath =
       letter.template_type === 'sector_legacy' ? letter.sector_qr_code : letter.project_qr_code
 
@@ -810,48 +842,67 @@ class MaintenanceLetterService extends BasePDFGenerator {
           ? `Scan QR Code for Sector ${letter.sector_code} Payment:`
           : 'Scan QR Code for Payment:'
 
+      // Improved QR code positioning with dynamic calculation
+      const qrSize = 90 // Increased from 80 for better visibility
+      const qrX = this.layout.width - this.MARGIN - qrSize - 15 // Reduced margin from 20
+      const qrY = this.layout.currentY + bankDetailsHeight + 20 // Dynamic positioning based on content
+
+      // Add visual separator above QR code
+      this.page.drawLine({
+        start: { x: this.MARGIN, y: qrY - 5 },
+        end: { x: this.layout.width - this.MARGIN, y: qrY - 5 },
+        thickness: 1,
+        color: this.COLORS.BORDER
+      })
+
       this.page.drawText(qrLabel, {
         x: this.MARGIN,
-        y: this.layout.currentY,
-        size: 9,
+        y: qrY + 12, // Better positioning above QR code
+        size: 10, // Increased from 9
         font: this.fonts.bold,
         color: this.COLORS.PRIMARY
       })
 
       // Implement enhanced QR code embedding with better path resolution
       try {
-        console.log('🔍 QR Code Debug - Looking for:', qrCodePath)
         const resolvedQrPath = this.resolveQrCodePath(qrCodePath)
         
         if (resolvedQrPath) {
-          console.log('✅ QR Code Debug - Found at:', resolvedQrPath)
           const qrExt = path.extname(resolvedQrPath).toLowerCase()
           const isSupportedImage = qrExt === '.png' || qrExt === '.jpg' || qrExt === '.jpeg'
           
           if (isSupportedImage) {
-            console.log('📷 QR Code Debug - Reading image file...')
             const qrImageBytes = fs.readFileSync(resolvedQrPath)
-            console.log('📊 QR Code Debug - Image size:', qrImageBytes.length, 'bytes')
             
-            const qrImage = qrExt === '.png' 
-              ? await this.pdfDoc.embedPng(qrImageBytes)
-              : await this.pdfDoc.embedJpg(qrImageBytes)
-            
-            // Calculate proper QR code position - ensure it fits within page bounds
-            const qrSize = 80
-            const qrX = this.layout.width - this.MARGIN - qrSize - 20 // 20px from right margin
-            const qrY = this.layout.currentY - 20
-            
-            console.log('🎯 QR Code Debug - Drawing at position:', {
-              x: qrX,
-              y: qrY,
-              width: qrSize,
-              height: qrSize,
-              currentY: this.layout.currentY,
-              pageWidth: this.layout.width,
-              margin: this.MARGIN,
-              maxX: this.layout.width - this.MARGIN
-            })
+            let qrImage
+            try {
+              // Try to detect actual file format by magic bytes, not just extension
+              const isPng = qrImageBytes.length > 8 && 
+                           qrImageBytes[0] === 0x89 && 
+                           qrImageBytes[1] === 0x50 && 
+                           qrImageBytes[2] === 0x4E && 
+                           qrImageBytes[3] === 0x47
+              
+              const isJpeg = qrImageBytes.length > 3 && 
+                            qrImageBytes[0] === 0xFF && 
+                            qrImageBytes[1] === 0xD8 && 
+                            qrImageBytes[2] === 0xFF
+              
+              if (isPng) {
+                qrImage = await this.pdfDoc.embedPng(qrImageBytes)
+              } else if (isJpeg) {
+                qrImage = await this.pdfDoc.embedJpg(qrImageBytes)
+              } else {
+                // Fallback: try based on extension
+                if (qrExt === '.png') {
+                  qrImage = await this.pdfDoc.embedPng(qrImageBytes)
+                } else {
+                  qrImage = await this.pdfDoc.embedJpg(qrImageBytes)
+                }
+              }
+            } catch (embedError) {
+              throw embedError
+            }
             
             this.page.drawImage(qrImage, {
               x: qrX,
@@ -867,13 +918,11 @@ class MaintenanceLetterService extends BasePDFGenerator {
               font: this.fonts.regular,
               color: this.COLORS.TEXT
             })
-            console.log('✅ QR Code Debug - Successfully embedded')
           } else {
             console.warn(`Unsupported QR code format: ${qrExt}. Supported formats: PNG, JPG, JPEG`)
           }
         } else {
           // Show placeholder when QR code is missing
-          console.warn('❌ QR Code Debug - File not found, showing placeholder')
           this.page.drawText('QR Code: File not found - Please update QR code path in project settings', {
             x: this.MARGIN,
             y: this.layout.currentY,
@@ -881,10 +930,8 @@ class MaintenanceLetterService extends BasePDFGenerator {
             font: this.fonts.regular,
             color: this.COLORS.SECONDARY
           })
-          console.warn(`QR code file not found: ${qrCodePath}`)
         }
       } catch (error) {
-        console.error('Failed to embed QR code:', error)
         // Show error message in PDF
         this.page.drawText('QR Code: Error loading - Please check file path', {
           x: this.MARGIN,
@@ -895,17 +942,6 @@ class MaintenanceLetterService extends BasePDFGenerator {
         })
       }
     }
-
-    this.layout.currentY -= 20
-
-    // Add penalty question like your sample
-    this.page.drawText('Would you like me to calculate the penalty amount if payment is made significantly after the June deadline?', {
-      x: this.MARGIN,
-      y: this.layout.currentY,
-      size: 10,
-      font: this.fonts.italic,
-      color: this.COLORS.SECONDARY
-    })
   }
 }
 

@@ -358,7 +358,7 @@ declare global {
         showItemInFolder: (path: string) => void
       }
       dialog: {
-        selectFile: (options: {
+        selectLocalFile: (options: {
           title?: string
           filters?: { name: string; extensions: string[] }[]
         }) => Promise<string | null>

@@ -754,14 +754,12 @@ const Units: React.FC = () => {
         }
       }
 
-      message.success(`Successfully imported ${rowsToImport.length} unit records and their history`)
-
       // Show next step guidance using utility
       showCompletionWithNextStep(
         'units',
         'Units imported',
         navigate,
-        `${rowsToImport.length} units imported`
+        `Successfully imported ${rowsToImport.length} unit records and their history`
       )
 
       setIsImportModalOpen(false)

@@ -19,7 +19,8 @@ import {
   Alert,
   Tabs,
   Progress,
-  List
+  List,
+  Spin
 } from 'antd'
 import {
   FilePdfOutlined,
@@ -383,12 +384,10 @@ const Billing: React.FC = () => {
             addon_amount: ao.addon_amount
           }))
         })
-        message.success('Maintenance letters generated successfully')
         showCompletionWithNextStep(
           'billing',
-          'Maintenance letters generated',
-          navigate,
-          'Letters are created with Pending status'
+          'Maintenance letters generated successfully',
+          navigate
         )
         setIsModalOpen(false)
         setBatchModalStep('config')
@@ -698,11 +697,12 @@ const Billing: React.FC = () => {
         (a.unit_type || '').localeCompare(b.unit_type || '')
     },
     {
-      title: 'FY',
+      title: 'Financial Year',
       dataIndex: 'financial_year',
       key: 'financial_year',
+      width: 120,
       sorter: (a: MaintenanceLetter, b: MaintenanceLetter) =>
-        a.financial_year.localeCompare(b.financial_year)
+        (a.financial_year || '').localeCompare(b.financial_year || '')
     },
     {
       title: 'Amount',
@@ -783,7 +783,13 @@ const Billing: React.FC = () => {
             size="small"
             onClick={(e) => {
               e.stopPropagation()
-              navigate('/payments', { state: { unitId: record.unit_id } })
+              navigate('/payments', { 
+                state: { 
+                  unitId: record.unit_id,
+                  letterId: record.id,
+                  financialYear: record.financial_year
+                } 
+              })
             }}
           >
             Record Payment
@@ -1012,7 +1018,7 @@ const Billing: React.FC = () => {
                 {(selectedYear === null ||
                   (selectedYear !== null && selectedYear !== defaultFY)) && (
                   <Tag closable onClose={() => setSelectedYear(defaultFY)}>
-                    FY: {selectedYear ?? 'All'}
+                    Year: {selectedYear ?? 'All'}
                   </Tag>
                 )}
                 {selectedStatus && (
@@ -1053,7 +1059,15 @@ const Billing: React.FC = () => {
 
       {/* Batch PDF Generation Progress Modal */}
       <Modal
-        title="Generating PDFs"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Spin size="small" />
+            <span>Generating PDFs</span>
+            <Tag color="processing">
+              {pdfProgress?.current || 0} of {pdfProgress?.total || 0}
+            </Tag>
+          </div>
+        }
         open={generatingPdf}
         onCancel={() => setGeneratingPdf(false)}
         footer={[
@@ -1065,19 +1079,29 @@ const Billing: React.FC = () => {
             Cancel
           </Button>
         ]}
-        closable={false}
-        width={500}
+        closable={true}
+        width={600}
       >
         {pdfProgress && (
           <div>
             <Progress
               percent={Math.round((pdfProgress.current / pdfProgress.total) * 100)}
               status="active"
+              showInfo={false}
+              strokeWidth={8}
               style={{ marginBottom: 16 }}
             />
-            <Text>
-              Generating {pdfProgress.current} of {pdfProgress.total} PDFs
-            </Text>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              marginTop: 8,
+              fontSize: '12px',
+              color: '#666'
+            }}>
+              <span>Progress: {(pdfProgress?.current || 0)} / {(pdfProgress?.total || 0)}</span>
+              <span>Success: {(pdfProgress?.completed.filter(c => c.success).length || 0)}</span>
+              <span>Failed: {(pdfProgress?.completed.filter(c => !c.success).length || 0)}</span>
+            </div>
 
             {pdfProgress.completed.length > 0 && (
               <div style={{ marginTop: 16, maxHeight: 200, overflow: 'auto' }}>

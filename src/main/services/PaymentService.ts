@@ -197,7 +197,7 @@ class PaymentService extends BasePDFGenerator {
     const pdfDir = path.join(app.getPath('userData'), 'receipts')
     if (!fs.existsSync(pdfDir)) {
       console.log('📂 Creating directory:', pdfDir)
-      fs.mkdirSync(pdfDir, { recursive: true })
+      await fs.promises.mkdir(pdfDir, { recursive: true })
     }
 
     const fileName = `Receipt_${payment.receipt_number || paymentId}.pdf`
@@ -206,7 +206,7 @@ class PaymentService extends BasePDFGenerator {
     console.log('💾 Writing receipt to:', filePath)
     console.log('📊 File size:', pdfBytes.length, 'bytes')
     
-    fs.writeFileSync(filePath, pdfBytes)
+    await fs.promises.writeFile(filePath, pdfBytes)
     
     console.log('✅ Receipt generated successfully:', filePath)
     return filePath

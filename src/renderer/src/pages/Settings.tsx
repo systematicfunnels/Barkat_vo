@@ -40,7 +40,7 @@ const Settings: React.FC = () => {
 
   const handleImport = async (): Promise<void> => {
     try {
-      const result = await window.api.dialog.selectFile({
+      const result = await window.api.dialog.selectLocalFile({
         title: 'Select Database Backup File',
         filters: [
           { name: 'Database Files', extensions: ['db', 'sqlite', 'backup'] },

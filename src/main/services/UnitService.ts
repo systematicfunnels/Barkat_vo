@@ -271,13 +271,26 @@ class UnitService {
     )
 
     // Pre-validation: Check for potential issues before processing
-    const invalidRows = rows
-      .map((row, index) => ({ row: index + 1, unitNumber: String(row.unit_number || '').trim(), unitType: String(row.unit_type || '').trim() }))
-      .filter(item => !item.unitNumber)
+    const validationErrors: string[] = []
+    rows.forEach((row, index) => {
+      if (!String(row.unit_number || '').trim()) {
+        validationErrors.push(`Row ${index + 1}: Missing Unit Number`)
+      }
+      if (!String(row.owner_name || '').trim()) {
+        // Optional: warn but don't block if owner name is missing
+      }
+    })
 
-    if (invalidRows.length > 0) {
-      const rowNumbers = invalidRows.map(item => item.row).join(', ')
-      throw new Error(`Missing unit numbers in rows ${rowNumbers}. Each row must have a unit_number.`)
+    if (validationErrors.length > 0) {
+      const errorDetails = validationErrors.map(error => 
+        error.includes('Missing') 
+          ? `${error} - Please check your Excel file and ensure this column is filled`
+          : error
+      ).join('\n')
+      
+      throw new Error(
+        `Import validation failed:\n${errorDetails}\n\nPlease review your Excel file and fix the highlighted issues.`
+      )
     }
 
     return dbService.transaction(() => {
@@ -488,8 +501,9 @@ class UnitService {
           }
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error)
-          console.error(`[IMPORT ERROR] Row ${index} failed:`, message)
-          throw new Error(`Row ${index} (${row.unit_number as string}): ${message}`)
+          const unitIdentifier = row.unit_number || `Index ${index + 1}`
+          console.error(`[IMPORT ERROR] Row ${index + 1} (${unitIdentifier}) failed:`, message)
+          throw new Error(`Row ${index + 1} (${unitIdentifier}): ${message}`)
         }
       }
       return true

@@ -18,7 +18,6 @@ import {
   List,
   Alert
 } from 'antd'
-import path from 'path'
 import {
   PlusOutlined,
   EditOutlined,
@@ -243,8 +242,10 @@ const Projects: React.FC = () => {
     field: 'letterhead_path' | 'qr_code_path',
     title: string
   ): Promise<void> => {
+    console.log('🔍 [pickProjectFile] Starting file picker for field:', field)
     try {
-      const selectedPath = await window.api.dialog.selectFile({
+      console.log('🔍 [pickProjectFile] Calling window.api.dialog.selectLocalFile...')
+      const selectedPath = await window.api.dialog.selectLocalFile({
         title,
         filters: [
           {
@@ -253,15 +254,17 @@ const Projects: React.FC = () => {
           }
         ]
       })
+      console.log('🔍 [pickProjectFile] Dialog result:', selectedPath)
 
       if (selectedPath) {
-        // Copy file to app's user data directory
-        const fileName = path.basename(selectedPath)
-        const targetDir = 'assets' // Relative to user data directory
+        console.log('🔍 [pickProjectFile] Copying file to assets...')
+        // Extract filename from path using JavaScript (path module has issues in renderer)
+        const fileName = selectedPath.split(/[\\/]/).pop() || 'file.png'
+        const targetDir = 'assets'
         const targetPath = `${targetDir}/${fileName}`
         
-        // Use the backend to copy the file to app directory
         const copyResult = await window.api.files.copyAssetFile(selectedPath, targetPath)
+        console.log('🔍 [pickProjectFile] Copy result:', copyResult)
         
         if (copyResult.success) {
           form.setFieldsValue({ [field]: targetPath })
@@ -269,16 +272,18 @@ const Projects: React.FC = () => {
         } else {
           message.error(`Failed to copy ${field === 'qr_code_path' ? 'QR Code' : 'Letterhead'}: ${copyResult.error}`)
         }
+      } else {
+        console.log('🔍 [pickProjectFile] User cancelled or no file selected')
       }
     } catch (error) {
-      console.error('Failed to pick file:', error)
-      message.error('Failed to open file picker')
+      console.error('❌ [pickProjectFile] Failed to pick file:', error)
+      message.error('Failed to open file picker: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
   const pickSectorQrFile = async (index: number): Promise<void> => {
     try {
-      const selectedPath = await window.api.dialog.selectFile({
+      const selectedPath = await window.api.dialog.selectLocalFile({
         title: 'Select Sector QR / Barcode Image',
         filters: [
           {
@@ -290,7 +295,7 @@ const Projects: React.FC = () => {
 
       if (selectedPath) {
         // Copy file to app's user data directory
-        const fileName = path.basename(selectedPath)
+        const fileName = selectedPath.split(/[\\/]/).pop() || 'file.png'
         const targetDir = 'assets' // Relative to user data directory
         const targetPath = `${targetDir}/${fileName}`
         
@@ -414,14 +419,11 @@ const Projects: React.FC = () => {
       closeWorkbookPreview(true)
       await fetchProjects()
 
-      message.success(
-        `Imported ${importedProjects} project(s), ${importedUnits} unit row(s), and ${importedLetters} maintenance ledger row(s).`
-      )
       showCompletionWithNextStep(
         'projects',
         'Projects imported',
         navigate,
-        `${importedProjects} projects, ${importedUnits} units, ${importedLetters} letters imported`
+        `Imported ${importedProjects} project(s), ${importedUnits} unit row(s), and ${importedLetters} maintenance ledger row(s).`
       )
     } catch (error) {
       console.error('Workbook import failed:', error)
@@ -566,14 +568,13 @@ const Projects: React.FC = () => {
         message.success('Project updated successfully')
       } else {
         projectId = await window.api.projects.create(normalizedValues as Project)
-        message.success('Project created successfully')
 
         // Show next step guidance using utility
         showCompletionWithNextStep(
           'projects',
-          'Project created',
+          'Project created successfully',
           navigate,
-          `Project "${normalizedValues.name}" created successfully`
+          `Project "${normalizedValues.name}" has been added to the platform`
         )
       }
 

@@ -39,10 +39,13 @@ class BackupService {
     console.log('[BACKUP] Backup service initialized')
     console.log('[BACKUP] Database path:', this.dbPath)
     console.log('[BACKUP] Backup directory:', this.backupDir)
+  }
 
-    // Ensure backup directory exists
-    if (!fs.existsSync(this.backupDir)) {
-      fs.mkdirSync(this.backupDir, { recursive: true })
+  private async ensureBackupDir(): Promise<void> {
+    try {
+      await fs.promises.access(this.backupDir)
+    } catch {
+      await fs.promises.mkdir(this.backupDir, { recursive: true })
     }
   }
 
@@ -52,9 +55,12 @@ class BackupService {
   async createBackup(): Promise<BackupResult> {
     try {
       console.log('[BACKUP] Starting backup creation...')
+      await this.ensureBackupDir()
 
       // Check if database exists before attempting backup
-      if (!fs.existsSync(this.dbPath)) {
+      try {
+        await fs.promises.access(this.dbPath)
+      } catch {
         return {
           success: false,
           error: `Database file not found at: ${this.dbPath}`
@@ -81,7 +87,7 @@ class BackupService {
         size: result.size,
         version: '1'
       }
-      fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2))
+      await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2))
 
       // Cleanup old backups
       await this.cleanupOldBackups()
@@ -107,7 +113,9 @@ class BackupService {
   async restoreBackup(backupPath: string): Promise<BackupResult> {
     try {
       // Validate backup file exists
-      if (!fs.existsSync(backupPath)) {
+      try {
+        await fs.promises.access(backupPath)
+      } catch {
         return { success: false, error: 'Backup file not found' }
       }
 
@@ -143,35 +151,41 @@ class BackupService {
   /**
    * List all available backups
    */
-  listBackups(): Array<{
+  async listBackups(): Promise<Array<{
     name: string
     path: string
     timestamp: string
     size: number
-  }> {
+  }>> {
     try {
-      const files = fs.readdirSync(this.backupDir)
-      return files
-        .filter((f) => f.endsWith('.db.bak'))
-        .map((f) => {
-          const fullPath = path.join(this.backupDir, f)
-          const stat = fs.statSync(fullPath)
-          const metadataPath = fullPath + '.json'
-          let timestamp = ''
-          try {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'))
-            timestamp = metadata.timestamp
-          } catch {
-            timestamp = new Date(stat.mtimeMs).toISOString()
-          }
-          return {
-            name: f,
-            path: fullPath,
-            timestamp,
-            size: stat.size
-          }
-        })
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      const files = await fs.promises.readdir(this.backupDir)
+      const results = await Promise.all(
+        files
+          .filter((f) => f.endsWith('.db.bak'))
+          .map(async (f) => {
+            const fullPath = path.join(this.backupDir, f)
+            const stat = await fs.promises.stat(fullPath)
+            const metadataPath = fullPath + '.json'
+            let timestamp = ''
+            try {
+              await fs.promises.access(metadataPath)
+              const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'))
+              timestamp = metadata.timestamp
+            } catch {
+              timestamp = new Date(stat.mtimeMs).toISOString()
+            }
+            if (!timestamp) {
+              timestamp = new Date(stat.mtimeMs).toISOString()
+            }
+            return {
+              name: f,
+              path: fullPath,
+              timestamp,
+              size: stat.size
+            }
+          })
+      )
+      return results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     } catch (error) {
       console.error('Error listing backups:', error)
       return []
@@ -183,15 +197,18 @@ class BackupService {
    */
   private async cleanupOldBackups(): Promise<void> {
     try {
-      const backups = this.listBackups()
+      const backups = await this.listBackups()
 
       // Remove by count
       if (backups.length > this.config.maxBackups) {
         for (let i = this.config.maxBackups; i < backups.length; i++) {
           await deleteFileAsync(backups[i].path)
           const metadataPath = backups[i].path + '.json'
-          if (fs.existsSync(metadataPath)) {
+          try {
+            await fs.promises.access(metadataPath)
             await deleteFileAsync(metadataPath)
+          } catch {
+            // Metadata doesn't exist, ignore
           }
         }
       }
@@ -202,8 +219,11 @@ class BackupService {
         if (new Date(backup.timestamp).getTime() < cutoffTime) {
           await deleteFileAsync(backup.path)
           const metadataPath = backup.path + '.json'
-          if (fs.existsSync(metadataPath)) {
+          try {
+            await fs.promises.access(metadataPath)
             await deleteFileAsync(metadataPath)
+          } catch {
+            // Metadata doesn't exist, ignore
           }
         }
       }

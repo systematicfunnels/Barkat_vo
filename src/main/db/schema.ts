@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS projects (
   branch_address TEXT,
   qr_code_path TEXT,
   template_type TEXT DEFAULT 'standard',
+  payment_modes TEXT DEFAULT 'Cheque/Cash/Online Transfer', -- Dynamic payment modes
   import_profile_key TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

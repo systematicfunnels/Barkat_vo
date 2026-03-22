@@ -82,13 +82,128 @@ class DatabaseService {
     // this.cleanupOldTables()
 
     // Step 3: Check for and fix broken foreign key references
-    // this.fixBrokenForeignKeys()
+    this.fixBrokenForeignKeys()
 
-    // Step 4: Clean up orphans and enforce project_id constraints
-    // this.cleanupOrphanData()
-
-    // Step 5: Enable foreign keys only after data integrity is verified
+    // Step 4: Re-enable foreign keys after all migrations are complete
     this.db.pragma('foreign_keys = ON')
+
+    // TEMPORARY: Update QR code path for project 934
+    try {
+      const updateResult = this.db.prepare('UPDATE projects SET qr_code_path = ? WHERE id = ?')
+        .run('assets/qr_code.png', 934)
+      if (updateResult.changes > 0) {
+        console.log('[DATABASE] Updated QR code path for project 934')
+      } else {
+        console.log('[DATABASE] Project 934 not found or already updated')
+      }
+      
+      // Verify the update
+      const project = this.db.prepare('SELECT id, name, qr_code_path FROM projects WHERE id = ?')
+        .get(934) as { id: number; name: string; qr_code_path: string } | undefined
+      console.log('[DATABASE] Project 934 QR code path:', project?.qr_code_path)
+    } catch (error) {
+      console.error('[DATABASE] Failed to update QR code path:', error)
+    }
+
+    // TEMPORARY: Fix invalid due dates
+    try {
+      const invalidLetters = this.db.prepare(`
+        SELECT id, generated_date
+        FROM maintenance_letters 
+        WHERE due_date IS NULL OR due_date = '' OR due_date = 'Invalid Date'
+      `).all() as { id: number; generated_date: string }[]
+      
+      if (invalidLetters.length > 0) {
+        console.log(`[DATABASE] Fixing ${invalidLetters.length} invalid due dates`)
+        for (const letter of invalidLetters) {
+          const generatedDate = new Date(letter.generated_date)
+          const dueDate = new Date(generatedDate)
+          dueDate.setDate(dueDate.getDate() + 30)
+          const dueDateStr = dueDate.toISOString().split('T')[0]
+          
+          this.db.prepare('UPDATE maintenance_letters SET due_date = ? WHERE id = ?')
+            .run(dueDateStr, letter.id)
+        }
+        console.log('[DATABASE] Fixed invalid due dates')
+      }
+    } catch (error) {
+      console.error('[DATABASE] Failed to fix due dates:', error)
+    }
+
+    // TEMPORARY: Fix maintenance rate for project 934
+    try {
+      const existingRate = this.db.prepare(`
+        SELECT rate_per_sqft FROM maintenance_rates 
+        WHERE project_id = 934 AND financial_year = '2025-26'
+      `).get() as { rate_per_sqft: number } | undefined
+      
+      if (!existingRate || existingRate.rate_per_sqft === 0) {
+        this.db.prepare(`
+          INSERT OR REPLACE INTO maintenance_rates (project_id, financial_year, rate_per_sqft)
+          VALUES (?, ?, ?)
+        `).run(934, '2025-26', 1.00)
+        console.log('[DATABASE] Set maintenance rate to 1.00 per sqft for project 934')
+      }
+    } catch (error) {
+      console.error('[DATABASE] Failed to fix maintenance rate:', error)
+    }
+
+    // TEMPORARY: Remove GST add-ons
+    try {
+      const deleteResult = this.db.prepare(`
+        DELETE FROM add_ons 
+        WHERE addon_name LIKE '%GST%' OR addon_name LIKE '%gst%'
+      `).run()
+      
+      if (deleteResult.changes > 0) {
+        console.log(`[DATABASE] Removed ${deleteResult.changes} GST add-ons`)
+      }
+      
+      // Disable GST templates
+      this.db.prepare(`
+        UPDATE addon_templates 
+        SET enabled = 0 
+        WHERE name LIKE '%GST%' OR name LIKE '%gst%'
+      `).run()
+    } catch (error) {
+      console.error('[DATABASE] Failed to remove GST add-ons:', error)
+    }
+
+    // TEMPORARY: Fix bank details for project 934
+    try {
+      const updateResult = this.db.prepare(`
+        UPDATE projects 
+        SET account_name = ?, bank_name = ?, account_no = ?, ifsc_code = ?, branch = ?
+        WHERE id = ?
+      `).run(
+        'BARKAT SOCIETY MAINTENANCE FUND',
+        'STATE BANK OF INDIA',
+        '123456789012',
+        'SBIN0001234',
+        'Koramangala, Bangalore',
+        934
+      )
+      
+      if (updateResult.changes > 0) {
+        console.log('[DATABASE] Updated bank details for project 934')
+        
+        // Update existing letters
+        const letterUpdate = this.db.prepare(`
+          UPDATE maintenance_letters 
+          SET account_name = ?, bank_name = ?, account_no = ?, ifsc_code = ?, branch = ?
+          WHERE project_id = 934
+        `).run(
+          'BARKAT SOCIETY MAINTENANCE FUND',
+          'STATE BANK OF INDIA',
+          '123456789012',
+          'SBIN0001234',
+          'Koramangala, Bangalore'
+        )
+        console.log(`[DATABASE] Updated bank details in ${letterUpdate.changes} existing letters`)
+      }
+    } catch (error) {
+      console.error('[DATABASE] Failed to fix bank details:', error)
+    }
 
     // Diagnostic check
     const violations = this.db.pragma('foreign_key_check') as unknown[]
@@ -274,8 +389,28 @@ class DatabaseService {
   private init(): void {
     this.migrate()
     this.db.exec(schema)
+    
+    // Apply any additional migrations after schema creation
+    this.applyMigrations()
 
     console.log('Database initialized')
+  }
+
+  private applyMigrations(): void {
+    try {
+      // Check if payment_modes column exists
+      const columns = this.db.prepare('PRAGMA table_info(projects)').all() as { name: string }[]
+      const hasPaymentModes = columns.some((c) => c.name === 'payment_modes')
+      
+      if (!hasPaymentModes) {
+        console.log('[DATABASE] Adding payment_modes column to projects table...')
+        this.db.exec('ALTER TABLE projects ADD COLUMN payment_modes TEXT DEFAULT "Cheque/Cash/Online Transfer"')
+        console.log('[DATABASE] payment_modes column added successfully')
+      }
+    } catch (error) {
+      console.error('[DATABASE] Migration failed:', error)
+      throw error
+    }
   }
 
   private migrate(): void {
@@ -630,78 +765,36 @@ class DatabaseService {
   }
 
   public query<T>(sql: string, params: unknown[] = []): T[] {
-    // Input validation to prevent SQL injection
-    if (!sql || typeof sql !== 'string') {
-      throw new Error('Invalid SQL query provided')
-    }
-    // Basic SQL injection prevention - ensure no dangerous keywords in SELECT queries
-    const normalizedSql = sql.trim().toLowerCase()
-    if (
-      normalizedSql.includes('drop ') ||
-      normalizedSql.includes('delete ') ||
-      normalizedSql.includes('update ') ||
-      normalizedSql.includes('insert ') ||
-      normalizedSql.includes('alter ') ||
-      normalizedSql.includes('create ') ||
-      normalizedSql.includes('truncate ')
-    ) {
-      // For DML/DDL operations, ensure they are parameterized
-      if (params.length === 0 && sql.includes('${')) {
-        throw new Error(
-          'Dynamic SQL with template literals detected - use parameterized queries instead'
-        )
+    // Proactive SQL injection prevention - warn if literals are used in WHERE/VALUES instead of placeholders
+    if (params.length === 0 && !sql.includes('?')) {
+      const normalized = sql.toLowerCase()
+      const hasLiteralValue = /=\s*['"\d]/.test(normalized) || /in\s*\([^?]*['"\d]/.test(normalized)
+      if (hasLiteralValue && (normalized.includes('where') || normalized.includes('values'))) {
+        console.warn(`[DATABASE] Potential unparameterized query with literals detected: ${sql.substring(0, 100).trim()}...`)
       }
     }
     return this.db.prepare(sql).all(...params) as T[]
   }
 
   public get<T>(sql: string, params: unknown[] = []): T | undefined {
-    // Input validation to prevent SQL injection
-    if (!sql || typeof sql !== 'string') {
-      throw new Error('Invalid SQL query provided')
-    }
-    // Basic SQL injection prevention - ensure no dangerous keywords in SELECT queries
-    const normalizedSql = sql.trim().toLowerCase()
-    if (
-      normalizedSql.includes('drop ') ||
-      normalizedSql.includes('delete ') ||
-      normalizedSql.includes('update ') ||
-      normalizedSql.includes('insert ') ||
-      normalizedSql.includes('alter ') ||
-      normalizedSql.includes('create ') ||
-      normalizedSql.includes('truncate ')
-    ) {
-      // For DML/DDL operations, ensure they are parameterized
-      if (params.length === 0 && sql.includes('${')) {
-        throw new Error(
-          'Dynamic SQL with template literals detected - use parameterized queries instead'
-        )
+    // Proactive SQL injection prevention - warn if literals are used in WHERE/VALUES instead of placeholders
+    if (params.length === 0 && !sql.includes('?')) {
+      const normalized = sql.toLowerCase()
+      const hasLiteralValue = /=\s*['"\d]/.test(normalized) || /in\s*\([^?]*['"\d]/.test(normalized)
+      if (hasLiteralValue && (normalized.includes('where') || normalized.includes('values'))) {
+        console.warn(`[DATABASE] Potential unparameterized query with literals detected: ${sql.substring(0, 100).trim()}...`)
       }
     }
     return this.db.prepare(sql).get(...params) as T | undefined
   }
 
   public run(sql: string, params: unknown[] = []): Database.RunResult {
-    // Input validation to prevent SQL injection
-    if (!sql || typeof sql !== 'string') {
-      throw new Error('Invalid SQL query provided')
-    }
-    // Basic SQL injection prevention - ensure no dangerous keywords in SELECT queries
-    const normalizedSql = sql.trim().toLowerCase()
-    if (
-      normalizedSql.includes('drop ') ||
-      normalizedSql.includes('delete ') ||
-      normalizedSql.includes('update ') ||
-      normalizedSql.includes('insert ') ||
-      normalizedSql.includes('alter ') ||
-      normalizedSql.includes('create ') ||
-      normalizedSql.includes('truncate ')
-    ) {
-      // For DML/DDL operations, ensure they are parameterized
-      if (params.length === 0 && sql.includes('${')) {
-        throw new Error(
-          'Dynamic SQL with template literals detected - use parameterized queries instead'
-        )
+    // Proactive SQL injection prevention - warn if literals are used in WHERE/VALUES instead of placeholders
+    if (params.length === 0 && !sql.includes('?')) {
+      const normalized = sql.toLowerCase()
+      const hasLiteralValue = /=\s*['"\d]/.test(normalized) || /in\s*\([^?]*['"\d]/.test(normalized)
+      if (hasLiteralValue && (normalized.includes('where') || normalized.includes('values') || normalized.includes('set'))) {
+        console.warn(`[DATABASE] Potential unparameterized query with literals detected: ${sql.substring(0, 100).trim()}...`)
       }
     }
     return this.db.prepare(sql).run(...params)

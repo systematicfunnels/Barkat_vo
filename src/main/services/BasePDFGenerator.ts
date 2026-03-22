@@ -34,26 +34,28 @@ export interface PDFColors {
  */
 export abstract class BasePDFGenerator {
   protected readonly COLORS: PDFColors = {
-    PRIMARY: rgb(CONFIG.PDF.COLORS.NAVY.r, CONFIG.PDF.COLORS.NAVY.g, CONFIG.PDF.COLORS.NAVY.b),
+    PRIMARY: rgb(0.12, 0.32, 0.58), // Improved contrast navy blue
     SECONDARY: rgb(0.85, 0.65, 0.13), // Gold accent
     ACCENT: rgb(0.17, 0.48, 0.37), // Navy alternative
-    TEXT: rgb(CONFIG.PDF.COLORS.TEXT.r, CONFIG.PDF.COLORS.TEXT.g, CONFIG.PDF.COLORS.TEXT.b),
-    GRAY: rgb(CONFIG.PDF.COLORS.GRAY.r, CONFIG.PDF.COLORS.GRAY.g, CONFIG.PDF.COLORS.GRAY.b),
-    LIGHT_GRAY: rgb(0.97, 0.97, 0.97),
+    TEXT: rgb(0.15, 0.15, 0.15), // Darker for better readability
+    GRAY: rgb(0.45, 0.45, 0.45), // Better contrast
+    LIGHT_GRAY: rgb(0.96, 0.96, 0.96), // Subtle background
     SUCCESS: rgb(0.17, 0.48, 0.37),
     WARNING: rgb(0.75, 0.55, 0.2),
     ERROR: rgb(CONFIG.PDF.COLORS.RED.r, CONFIG.PDF.COLORS.RED.g, CONFIG.PDF.COLORS.RED.b),
-    BORDER: rgb(CONFIG.PDF.COLORS.LINE.r, CONFIG.PDF.COLORS.LINE.g, CONFIG.PDF.COLORS.LINE.b),
-    BACKGROUND: rgb(
-      CONFIG.PDF.COLORS.HEADER_BG.r,
-      CONFIG.PDF.COLORS.HEADER_BG.g,
-      CONFIG.PDF.COLORS.HEADER_BG.b
-    )
+    BORDER: rgb(0.82, 0.82, 0.82), // Softer lines
+    BACKGROUND: rgb(0.98, 0.98, 0.98) // Cleaner header background
   }
 
   protected readonly PAGE_SIZE = CONFIG.PDF.PAGE_SIZE
   protected readonly MARGIN = CONFIG.PDF.MARGIN
-  protected readonly FONT_SIZES = CONFIG.PDF.FONT_SIZES
+  protected readonly FONT_SIZES = {
+    HEADER: 24, // Increased from 22 for better hierarchy
+    SUBHEADER: 11, // Increased from 10
+    BODY: 10, // Increased from 9
+    FOOTER: 9, // Increased from 8
+    SUBJECT: 12 // Increased from 11
+  }
 
   protected layout: PDFLayout
   protected fonts: PDFFont = {} as PDFFont
@@ -159,71 +161,206 @@ export abstract class BasePDFGenerator {
   }
 
   /**
-   * Draw table with standardized styling
+   * Draw table with standardized styling and proper borders
    */
   protected drawTable(headers: string[], rows: string[][]): void {
     const { contentWidth } = this.layout
-    const columnWidth = contentWidth / headers.length
-    const rowHeight = 22
+    
+    // Define column widths proportionally for better layout
+    // Particulars (50%), Amount (16.67%), Before Due (16.67%), After Due (16.67%)
+    const columnWidths = [
+      contentWidth * 0.5,    // Particulars column (50%)
+      contentWidth * 0.1667, // Amount column (16.67%)
+      contentWidth * 0.1667, // Before Due column (16.67%)
+      contentWidth * 0.1667  // After Due column (16.67%)
+    ]
+    
+    // Calculate total table height needed
+    const calculateRowHeight = (row: string[]): number => {
+      const hasLongText = row.some((cell, i) => cell.length > 40 && i === 0)
+      return hasLongText ? 40 : 30
+    }
+    
+    const headerHeight = 32
+    const totalRowsHeight = rows.reduce((sum, row) => sum + calculateRowHeight(row), 0)
+    const totalTableHeight = headerHeight + totalRowsHeight
+    
+    // Table boundaries
+    const tableX = this.MARGIN
+    const tableY = this.layout.currentY - totalTableHeight
+    const tableWidth = contentWidth
+    const tableHeight = totalTableHeight
 
-    // Header background
+    // Draw complete table border
     this.page.drawRectangle({
-      x: this.MARGIN,
-      y: this.layout.currentY - 25,
-      width: contentWidth,
-      height: 25,
+      x: tableX,
+      y: tableY,
+      width: tableWidth,
+      height: tableHeight,
+      color: this.COLORS.BORDER,
+      borderColor: this.COLORS.BORDER,
+      borderWidth: 1.5,
+      borderOpacity: 1
+    })
+
+    // Draw header background
+    this.page.drawRectangle({
+      x: tableX,
+      y: tableY + tableHeight - headerHeight,
+      width: tableWidth,
+      height: headerHeight,
       color: this.COLORS.BACKGROUND
     })
 
-    // Headers
+    // Draw header text with proper alignment
+    let currentX = tableX
     headers.forEach((header, i) => {
-      this.page.drawText(header, {
-        x: this.MARGIN + 5 + i * columnWidth,
-        y: this.layout.currentY - 16,
-        size: 9,
+      const columnWidth = columnWidths[i]
+      const headerWidth = this.fonts.bold.widthOfTextAtSize(header, 10)
+      
+      // Truncate if too long
+      let displayHeader = header
+      let actualHeaderWidth = headerWidth
+      const maxHeaderWidth = columnWidth - 12 // 6px padding on each side
+      
+      if (headerWidth > maxHeaderWidth) {
+        const avgCharWidth = 5.5
+        const maxChars = Math.floor(maxHeaderWidth / avgCharWidth)
+        displayHeader = header.substring(0, maxChars - 3) + '...'
+        actualHeaderWidth = this.fonts.bold.widthOfTextAtSize(displayHeader, 10)
+      }
+      
+      // Center header within column
+      const columnCenter = currentX + (columnWidth / 2)
+      const textX = columnCenter - (actualHeaderWidth / 2)
+      const textY = tableY + tableHeight - headerHeight + 10
+      
+      this.page.drawText(displayHeader, {
+        x: textX,
+        y: textY,
+        size: 10,
         font: this.fonts.bold,
         color: this.COLORS.PRIMARY
       })
+      
+      // Draw vertical separator (except for last column)
+      if (i < headers.length - 1) {
+        this.page.drawLine({
+          start: { x: currentX + columnWidth, y: tableY },
+          end: { x: currentX + columnWidth, y: tableY + tableHeight },
+          thickness: 1,
+          color: this.COLORS.BORDER
+        })
+      }
+      
+      currentX += columnWidth
     })
 
-    this.layout.currentY -= 25
-
-    // Data rows with zebra striping
+    // Draw data rows
+    let currentRowY = tableY + tableHeight - headerHeight
     rows.forEach((row, rowIndex) => {
-      // Zebra striping
+      const rowHeight = calculateRowHeight(row)
+      currentRowY -= rowHeight
+      
+      // Draw row background (zebra striping)
       if (rowIndex % 2 === 0) {
         this.page.drawRectangle({
-          x: this.MARGIN,
-          y: this.layout.currentY - 22,
-          width: contentWidth,
-          height: rowHeight,
+          x: tableX + 1, // Inside border
+          y: currentRowY + 1,
+          width: tableWidth - 2,
+          height: rowHeight - 2,
           color: this.COLORS.LIGHT_GRAY
         })
       }
-
-      // Row data
+      
+      // Draw row data with proper alignment and text wrapping
+      let currentX = tableX
       row.forEach((cell, colIndex) => {
-        this.page.drawText(cell, {
-          x: this.MARGIN + 5 + colIndex * columnWidth,
-          y: this.layout.currentY - 15,
-          size: 9,
-          font: this.fonts.regular,
-          color: this.COLORS.TEXT
-        })
+        const columnWidth = columnWidths[colIndex]
+        const cellY = currentRowY + rowHeight - 18 // Vertical alignment with padding
+        
+        // Text wrapping logic for particulars column
+        if (cell.length > 30 && colIndex === 0) {
+          const avgCharWidth = 5.5
+          const maxCharsPerLine = Math.floor((columnWidth - 16) / avgCharWidth) // 8px padding each side
+          
+          const words = cell.split(' ')
+          let line1 = ''
+          let line2 = ''
+          let currentLine = line1
+          
+          for (const word of words) {
+            const testLine = currentLine ? currentLine + ' ' + word : word
+            
+            if (testLine.length <= maxCharsPerLine) {
+              currentLine = testLine
+            } else {
+              if (!line1) {
+                line1 = currentLine = word
+              } else if (!line2) {
+                line2 = word
+                currentLine = word
+              } else {
+                line2 += ' ' + word
+              }
+            }
+          }
+          
+          if (!line1 && words.length > 0) {
+            line1 = words[0]
+          }
+          
+          if (line2 && line2.length > maxCharsPerLine) {
+            line2 = line2.substring(0, maxCharsPerLine) + '...'
+          }
+          
+          // Draw first line
+          this.page.drawText(line1, {
+            x: currentX + 8, // 8px padding from left border
+            y: cellY,
+            size: 9,
+            font: this.fonts.regular,
+            color: this.COLORS.TEXT
+          })
+          
+          // Draw second line if exists
+          if (line2 && line2.trim()) {
+            this.page.drawText(line2, {
+              x: currentX + 8, // Same padding
+              y: cellY - 16,
+              size: 9,
+              font: this.fonts.regular,
+              color: this.COLORS.TEXT
+            })
+          }
+        } else {
+          // Normal text for amount columns
+          const textWidth = this.fonts.regular.widthOfTextAtSize(cell, 10)
+          let textX
+          
+          if (colIndex === 0) {
+            // Left align particulars
+            textX = currentX + 8 // 8px padding from left border
+          } else {
+            // Right align amount columns
+            textX = currentX + columnWidth - textWidth - 8 // 8px padding from right border
+          }
+          
+          this.page.drawText(cell, {
+            x: textX,
+            y: cellY,
+            size: 10,
+            font: this.fonts.regular,
+            color: this.COLORS.TEXT
+          })
+        }
+        
+        currentX += columnWidth
       })
-
-      this.layout.currentY -= rowHeight
     })
 
-    // Bottom border
-    this.page.drawLine({
-      start: { x: this.MARGIN, y: this.layout.currentY },
-      end: { x: this.layout.width - this.MARGIN, y: this.layout.currentY },
-      thickness: 1,
-      color: this.COLORS.BORDER
-    })
-
-    this.layout.currentY -= 20
+    // Update layout position below table
+    this.layout.currentY = tableY - 20 // 20px spacing below table
   }
 
   /**
@@ -293,19 +430,19 @@ export abstract class BasePDFGenerator {
   /**
    * Save PDF with standardized naming
    */
-  protected savePDF(fileName: string, directory?: string): string {
-    const pdfBytes = this.pdfDoc.save()
+  protected async savePDF(fileName: string, directory?: string): Promise<string> {
+    const pdfBytes = await this.pdfDoc.save()
     const fs = require('fs')
     const path = require('path')
     const app = require('electron').app
 
     const targetDir = directory || path.join(app.getPath('userData'), 'pdfs')
     if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true })
+      await fs.promises.mkdir(targetDir, { recursive: true })
     }
 
     const fullPath = path.join(targetDir, fileName)
-    fs.writeFileSync(fullPath, pdfBytes)
+    await fs.promises.writeFile(fullPath, pdfBytes)
     return fullPath
   }
 

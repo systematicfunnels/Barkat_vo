@@ -51,30 +51,22 @@ const api = {
       financialYear?: string,
       unitType?: string,
       status?: string
-    ) => ipcRenderer.invoke('get-dashboard-stats', projectId, financialYear, unitType, status)
-  },
-  uniprojects: {
-    getAll: () => ipcRenderer.invoke('get-projects'),
-    getById: (id: number) => ipcRenderer.invoke('get-project', id),
-    create: (project: Project) => ipcRenderer.invoke('create-project', project),
-    update: (id: number, project: Partial<Project>) => ipcRenderer.invoke('update-project', id, project),
-    delete: (id: number) => ipcRenderer.invoke('delete-project', id),
-    bulkDelete: (ids: number[]) => ipcRenderer.invoke('bulk-delete-projects', ids),
-    importStandardWorkbookProject: (payload: { project_id: number; rows: Record<string, unknown>[] }) =>
-      ipcRenderer.invoke('import-standard-workbook-project', payload),
-    getSectorPaymentConfigs: (projectId: number) => ipcRenderer.invoke('get-sector-payment-configs', projectId),
-    saveSectorPaymentConfigs: (projectId: number, configs: Partial<ProjectSectorPaymentConfig>[]) =>
-      ipcRenderer.invoke('save-sector-payment-configs', projectId, configs),
+    ) => ipcRenderer.invoke('get-dashboard-stats', projectId, financialYear, unitType, status),
     getChargesConfig: (projectId: number) => ipcRenderer.invoke('get-project-charges-config', projectId),
     saveChargesConfig: (config: any) => ipcRenderer.invoke('save-project-charges-config', config),
     getAddonTemplates: (projectId: number) => ipcRenderer.invoke('get-addon-templates', projectId),
-    getEnabledAddonTemplates: (projectId: number) => ipcRenderer.invoke('get-enabled-addon-templates', projectId),
+    getEnabledAddonTemplates: (projectId: number) =>
+      ipcRenderer.invoke('get-enabled-addon-templates', projectId),
     createAddonTemplate: (template: any) => ipcRenderer.invoke('create-addon-template', template),
-    updateAddonTemplate: (id: number, template: any) => ipcRenderer.invoke('update-addon-template', id, template),
+    updateAddonTemplate: (id: number, template: any) =>
+      ipcRenderer.invoke('update-addon-template', id, template),
     deleteAddonTemplate: (id: number) => ipcRenderer.invoke('delete-addon-template', id),
-    reorderAddonTemplates: (templates: any[]) => ipcRenderer.invoke('reorder-addon-templates', templates),
-    initializeDefaultAddonTemplates: (projectId: number) => ipcRenderer.invoke('initialize-default-addon-templates', projectId),
-    migrateAddonTemplates: (projectId: number) => ipcRenderer.invoke('migrate-addon-templates', projectId)
+    reorderAddonTemplates: (templates: any[]) =>
+      ipcRenderer.invoke('reorder-addon-templates', templates),
+    initializeDefaultAddonTemplates: (projectId: number) =>
+      ipcRenderer.invoke('initialize-default-addon-templates', projectId),
+    migrateAddonTemplates: (projectId: number) =>
+      ipcRenderer.invoke('migrate-addon-templates', projectId)
   },
   units: {
     getAll: () => ipcRenderer.invoke('get-units'),
@@ -135,7 +127,7 @@ const api = {
     showItemInFolder: (path: string) => ipcRenderer.invoke('show-item-in-folder', path)
   },
   dialog: {
-    selectFile: (options: { title?: string; filters?: { name: string; extensions: string[] }[] }) =>
+    selectLocalFile: (options: { title?: string; filters?: { name: string; extensions: string[] }[] }) =>
       ipcRenderer.invoke('select-local-file', options) as Promise<string | null>
   },
   database: {

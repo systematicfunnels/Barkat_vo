@@ -620,14 +620,12 @@ const Reports: React.FC = () => {
       anchor.click()
       window.URL.revokeObjectURL(url)
 
-      message.success('Excel file exported successfully with yearly summary')
-
       // Show completion notification using utility
       showCompletionWithNextStep(
         'reports',
-        'Report exported',
+        'Report exported successfully',
         navigate,
-        'Financial report exported successfully'
+        'Excel file exported with yearly summary'
       )
     } catch (error) {
       console.error('Failed to export Excel:', error)
